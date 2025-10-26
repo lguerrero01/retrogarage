@@ -1,0 +1,64 @@
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Hero Section -->
+    <div class="text-center mb-12">
+      <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+        Nuestro <span class="text-[#ed450d]">Menú</span>
+      </h1>
+      <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+        Descubre nuestra selección de platillos preparados con ingredientes frescos y mucho amor
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Menu Section -->
+      <div class="lg:col-span-2">
+        <app-category-filter
+          [categories]="categories"
+          [selectedCategory]="selectedCategory"
+          (onCategoryChange)="onCategoryChange($event)">
+        </app-category-filter>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <app-menu-card
+            *ngFor="let item of filteredItems"
+            [item]="item">
+          </app-menu-card>
+        </div>
+      </div>
+
+      <!-- Cart Section -->
+      <div class="lg:col-span-1">
+        <div class="sticky top-24">
+          <app-cart-summary></app-cart-summary>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mobile Cart Button -->
+  <button
+    *ngIf="cartItemCount > 0"
+    (click)="toggleMobileCart()"
+    class="lg:hidden fixed bottom-6 right-6 bg-[#ed450d] text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center font-bold text-lg z-50">
+    {{cartItemCount}}
+  </button>
+
+  <!-- Mobile Cart Modal -->
+  <div *ngIf="showMobileCart"
+       class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
+    <div class="bg-white w-full max-h-[80vh] overflow-y-auto rounded-t-xl">
+      <div class="p-4 border-b flex justify-between items-center">
+        <h2 class="text-xl font-bold">Tu Pedido</h2>
+        <button
+          (click)="showMobileCart = false"
+          class="text-gray-500 hover:text-gray-700">
+          ✕
+        </button>
+      </div>
+      <div class="p-4">
+        <app-cart-summary></app-cart-summary>
+      </div>
+    </div>
+  </div>
+</div>

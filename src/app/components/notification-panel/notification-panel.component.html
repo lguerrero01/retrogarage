@@ -1,0 +1,93 @@
+<div class="relative">
+  <!-- Notification Bell -->
+  <button
+    (click)="togglePanel()"
+    class="relative p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
+    <lucide-icon [img]="Bell" class="h-6 w-6"></lucide-icon>
+    <span *ngIf="unreadCount > 0"
+          class="absolute -top-1 -right-1 bg-[#ed450d] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold animate-pulse">
+      {{unreadCount > 99 ? '99+' : unreadCount}}
+    </span>
+  </button>
+
+  <!-- Notification Panel -->
+  <div *ngIf="showPanel"
+       class="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border z-50 max-h-96 overflow-hidden">
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-[#2a23b8] to-[#8624ce] text-white p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold">Notificaciones</h3>
+        <div class="flex items-center space-x-2">
+          <button *ngIf="notifications.length > 0"
+            (click)="markAllAsRead()"
+            class="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors">
+            <lucide-icon [img]="CheckCheck" class="h-3 w-3 inline mr-1"></lucide-icon>
+            Marcar todas
+          </button>
+          <button
+            (click)="showPanel = false"
+            class="hover:bg-white/20 p-1 rounded transition-colors">
+            <lucide-icon [img]="X" class="h-4 w-4"></lucide-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="max-h-80 overflow-y-auto">
+      <div *ngIf="notifications.length === 0" class="p-6 text-center text-gray-500">
+        <lucide-icon [img]="Bell" class="h-12 w-12 mx-auto mb-2 text-gray-300"></lucide-icon>
+        <p>No hay notificaciones</p>
+      </div>
+
+      <div *ngFor="let notification of notifications; trackBy: trackByNotificationId"
+           [class]="'border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors cursor-pointer ' +
+                    (notification.read ? 'opacity-60' : 'bg-blue-50/50')"
+           (click)="markAsRead(notification.id)">
+
+        <div class="flex items-start space-x-3">
+          <!-- Notification Icon -->
+          <div [class]="'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ' + getNotificationColor(notification.type)">
+            <lucide-icon [img]="getNotificationIcon(notification.type)" class="h-4 w-4"></lucide-icon>
+          </div>
+
+          <!-- Notification Content -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-semibold text-gray-800 truncate">
+                {{notification.title}}
+              </h4>
+              <div class="flex items-center space-x-1">
+                <span *ngIf="!notification.read" class="w-2 h-2 bg-[#ed450d] rounded-full"></span>
+                <button
+                  (click)="markAsRead(notification.id); $event.stopPropagation()"
+                  class="text-gray-400 hover:text-gray-600 transition-colors">
+                  <lucide-icon [img]="Check" class="h-3 w-3"></lucide-icon>
+                </button>
+              </div>
+            </div>
+            <p class="text-sm text-gray-600 mt-1">{{notification.message}}</p>
+            <p class="text-xs text-gray-400 mt-2">{{formatTime(notification.timestamp)}}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div *ngIf="notifications.length > 0" class="border-t bg-gray-50 p-3">
+      <button
+        (click)="clearAllNotifications()"
+        class="w-full text-sm text-gray-600 hover:text-gray-800 flex items-center justify-center space-x-1 transition-colors">
+        <lucide-icon [img]="Trash2" class="h-3 w-3"></lucide-icon>
+        <span>Limpiar todas</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div *ngIf="showPanel"
+     class="fixed inset-0 z-40"
+     (click)="showPanel = false">
+</div>

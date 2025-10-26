@@ -1,0 +1,8 @@
+<!-- Main Application -->
+<div class="min-h-screen bg-gray-50">
+  <app-header></app-header>
+  <router-outlet></router-outlet>
+</div>
+
+<!-- Login Modal -->
+<app-login *ngIf="showLoginModal"></app-login>

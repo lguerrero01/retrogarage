@@ -1,0 +1,101 @@
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+      <div>
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">
+          Panel de <span class="text-[#ed450d]">Cocina</span>
+        </h1>
+        <p class="text-gray-600">
+          Gestiona y monitorea todas las órdenes en tiempo real
+        </p>
+      </div>
+
+      <div class="flex items-center space-x-4 mt-4 sm:mt-0">
+        <!-- Sound Toggle -->
+        <button
+          (click)="toggleSound()"
+          [class]="soundEnabled
+            ? 'bg-[#8624ce] text-white'
+            : 'bg-gray-200 text-gray-600'"
+          class="p-2 rounded-lg transition-colors"
+          title="{{soundEnabled ? 'Desactivar sonidos' : 'Activar sonidos'}}">
+          <lucide-icon [img]="soundEnabled ? Volume2 : VolumeX" class="h-5 w-5"></lucide-icon>
+        </button>
+
+        <!-- New Orders Alert -->
+        <div *ngIf="hasNewOrders"
+             class="flex items-center space-x-2 bg-[#fac20a] text-[#2a23b8] px-4 py-2 rounded-lg font-medium animate-pulse">
+          <lucide-icon [img]="Bell" class="h-5 w-5 animate-bounce"></lucide-icon>
+          <span>¡{{newOrdersCount}} nueva{{newOrdersCount > 1 ? 's' : ''}} orden{{newOrdersCount > 1 ? 'es' : ''}}!</span>
+        </div>
+
+        <!-- Connection Status -->
+        <div [class]="'px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1 ' +
+                      (isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')">
+          <div [class]="'w-2 h-2 rounded-full ' + (isConnected ? 'bg-green-500' : 'bg-red-500')"></div>
+          <span>{{isConnected ? 'En línea' : 'Sin conexión'}}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <app-kitchen-stats></app-kitchen-stats>
+
+    <!-- Daily Summary -->
+    <div class="mb-8">
+      <app-daily-summary></app-daily-summary>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex items-center space-x-4 mb-8">
+      <div class="flex items-center space-x-2">
+        <lucide-icon [img]="Filter" class="h-5 w-5 text-gray-600"></lucide-icon>
+        <span class="text-gray-700 font-medium">Filtrar por estado:</span>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button *ngFor="let option of statusOptions"
+          (click)="setStatusFilter(option.value)"
+          [class]="statusFilter === option.value
+            ? option.color + ' text-white shadow-lg scale-105'
+            : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md hover:scale-105'"
+          class="px-4 py-2 rounded-lg font-medium transition-all duration-300">
+          {{option.label}}
+          <span *ngIf="getOrderCountByStatus(option.value) > 0"
+                class="ml-1 bg-white/20 px-1 rounded-full text-xs">
+            {{getOrderCountByStatus(option.value)}}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Orders Grid -->
+    <div *ngIf="filteredOrders.length === 0" class="text-center py-12">
+      <div class="bg-white rounded-xl shadow-lg p-8 max-w-md mx-auto">
+        <div class="text-gray-400 mb-4">
+          <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-gray-600 mb-2">
+          {{statusFilter === 'all' ? 'No hay órdenes' : 'No hay órdenes ' + getSelectedStatusLabel()}}
+        </h3>
+        <p class="text-gray-500">
+          {{statusFilter === 'all'
+            ? 'Las nuevas órdenes aparecerán aquí automáticamente'
+            : 'Cambia el filtro para ver órdenes en otros estados'
+          }}
+        </p>
+      </div>
+    </div>
+
+    <div *ngIf="filteredOrders.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <app-order-card
+        *ngFor="let order of filteredOrders; trackBy: trackByOrderId"
+        [order]="order"
+        [class]="order.status === 'pending' && isNewOrder(order) ? 'animate-pulse ring-2 ring-[#fac20a]' : ''">
+      </app-order-card>
+    </div>
+  </div>
+</div>

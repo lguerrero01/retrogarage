@@ -1,0 +1,100 @@
+<div class="bg-white rounded-xl shadow-lg overflow-hidden">
+  <div class="bg-gradient-to-r from-[#2a23b8] to-[#8624ce] text-white p-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-2xl font-bold flex items-center">
+          <lucide-icon [img]="FileText" class="h-6 w-6 mr-2"></lucide-icon>
+          Cierre de Venta
+        </h2>
+        <p class="opacity-90">Resumen del día {{selectedDate.toLocaleDateString('es-ES')}}</p>
+      </div>
+      <div class="flex space-x-2">
+        <button
+          (click)="selectDate()"
+          class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+          <lucide-icon [img]="Calendar" class="h-4 w-4"></lucide-icon>
+          <span class="hidden sm:inline">Cambiar Fecha</span>
+        </button>
+        <button
+          (click)="printSummary()"
+          [disabled]="!dailySummary"
+          class="bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-lg flex items-center space-x-2 font-medium transition-colors">
+          <lucide-icon [img]="Printer" class="h-4 w-4"></lucide-icon>
+          <span class="hidden sm:inline">Imprimir</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-6">
+    <div *ngIf="!dailySummary" class="text-center py-8">
+      <div class="text-gray-400 mb-4">
+        <lucide-icon [img]="FileText" class="h-16 w-16 mx-auto"></lucide-icon>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-600 mb-2">No hay datos para esta fecha</h3>
+      <p class="text-gray-500">Selecciona una fecha diferente o espera a que se generen órdenes</p>
+    </div>
+
+    <div *ngIf="dailySummary">
+      <!-- Revenue Highlight -->
+      <div class="bg-gradient-to-r from-[#ed450d] to-[#e8065b] text-white rounded-xl p-6 mb-6 text-center">
+        <lucide-icon [img]="DollarSign" class="h-12 w-12 mx-auto mb-2"></lucide-icon>
+        <h3 class="text-3xl font-bold">${{dailySummary.totalRevenue.toFixed(2)}}</h3>
+        <p class="opacity-90">Ingresos Totales del Día</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <div class="text-2xl font-bold text-[#2a23b8]">{{dailySummary.totalOrders}}</div>
+          <div class="text-sm text-gray-600">Total Órdenes</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <div class="text-2xl font-bold text-[#ed450d]">{{dailySummary.ordersByStatus.completed}}</div>
+          <div class="text-sm text-gray-600">Completadas</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <div class="text-2xl font-bold text-[#fac20a]">{{dailySummary.ordersByStatus.pending}}</div>
+          <div class="text-sm text-gray-600">Pendientes</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+          <div class="text-2xl font-bold text-[#8624ce]">{{getAverageOrderValue()}}</div>
+          <div class="text-sm text-gray-600">Promedio/Orden</div>
+        </div>
+      </div>
+
+      <!-- Categories and Top Items -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Categories -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <h4 class="font-semibold text-gray-800 mb-3 flex items-center">
+            <lucide-icon [img]="TrendingUp" class="h-4 w-4 mr-2 text-[#ed450d]"></lucide-icon>
+            Ventas por Categoría
+          </h4>
+          <div class="space-y-2">
+            <div *ngFor="let category of getCategoriesArray()"
+                 class="flex justify-between items-center">
+              <span class="text-gray-700">{{category.name}}</span>
+              <span class="font-medium text-[#2a23b8]">{{category.count}} items</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Items -->
+        <div class="bg-gray-50 rounded-lg p-4">
+          <h4 class="font-semibold text-gray-800 mb-3">Top Productos</h4>
+          <div class="space-y-2">
+            <div *ngFor="let item of dailySummary.topItems.slice(0, 5)"
+                 class="flex justify-between items-center">
+              <div>
+                <div class="font-medium text-gray-800">{{item.name}}</div>
+                <div class="text-sm text-gray-600">{{item.quantity}} vendidos</div>
+              </div>
+              <span class="font-bold text-[#ed450d]">${{item.revenue.toFixed(2)}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

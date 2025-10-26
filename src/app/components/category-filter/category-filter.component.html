@@ -1,0 +1,19 @@
+<div class="flex flex-wrap gap-3 mb-8">
+  <button
+    (click)="onCategoryChange.emit('all')"
+    [class]="selectedCategory === 'all'
+      ? 'bg-[#fac20a] text-[#2a23b8] shadow-lg scale-105'
+      : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md'"
+    class="px-6 py-3 rounded-full font-medium transition-all duration-300 transform hover:scale-105">
+    Todos
+  </button>
+  <button
+    *ngFor="let category of categories; let i = index"
+    (click)="onCategoryChange.emit(category)"
+    [class]="selectedCategory === category
+      ? 'bg-[#fac20a] text-[#2a23b8] shadow-lg scale-105'
+      : getColorClass(i) + ' text-white shadow-md'"
+    class="px-6 py-3 rounded-full font-medium transition-all duration-300 transform hover:scale-105">
+    {{category}}
+  </button>
+</div>

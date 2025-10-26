@@ -1,0 +1,244 @@
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+      <div>
+        <h1 class="text-4xl font-bold text-gray-800 mb-2">
+          Panel de <span class="text-[#ed450d]">Administración</span>
+        </h1>
+        <p class="text-gray-600">
+          Gestiona el menú y productos del restaurante
+        </p>
+      </div>
+
+      <button
+        (click)="showAddForm = true"
+        class="bg-[#ed450d] hover:bg-[#ed450d]/90 text-white px-6 py-3 rounded-lg font-bold flex items-center space-x-2 transition-colors mt-4 sm:mt-0">
+        <lucide-icon [img]="Plus" class="h-5 w-5"></lucide-icon>
+        <span>Agregar Producto</span>
+      </button>
+    </div>
+
+    <!-- Add/Edit Form Modal -->
+    <div *ngIf="showAddForm || editingItem"
+         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b">
+          <h2 class="text-2xl font-bold text-gray-800">
+            {{editingItem ? 'Editar Producto' : 'Agregar Nuevo Producto'}}
+          </h2>
+        </div>
+
+        <form (ngSubmit)="saveItem()" class="p-6 space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Nombre del producto *
+              </label>
+              <input
+                type="text"
+                [(ngModel)]="formData.name"
+                name="name"
+                required
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Precio *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                [(ngModel)]="formData.price"
+                name="price"
+                required
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Descripción *
+            </label>
+            <textarea
+              [(ngModel)]="formData.description"
+              name="description"
+              required
+              rows="3"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent">
+            </textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                Categoría *
+              </label>
+              <select
+                [(ngModel)]="formData.category"
+                name="category"
+                required
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent">
+                <option value="">Seleccionar categoría</option>
+                <option value="Entradas">Entradas</option>
+                <option value="Platos Principales">Platos Principales</option>
+                <option value="Bebidas">Bebidas</option>
+                <option value="Postres">Postres</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                URL de imagen *
+              </label>
+              <input
+                type="url"
+                [(ngModel)]="formData.image"
+                name="image"
+                required
+                placeholder="https://ejemplo.com/imagen.jpg"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-4">
+            <label class="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                [(ngModel)]="formData.available"
+                name="available"
+                class="rounded border-gray-300 text-[#ed450d] focus:ring-[#ed450d]"
+              />
+              <span class="text-sm font-medium text-gray-700">Disponible</span>
+            </label>
+
+            <label class="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                [(ngModel)]="formData.customizable"
+                name="customizable"
+                class="rounded border-gray-300 text-[#ed450d] focus:ring-[#ed450d]"
+              />
+              <span class="text-sm font-medium text-gray-700">Personalizable</span>
+            </label>
+          </div>
+
+          <!-- Ingredients Section -->
+          <div *ngIf="formData.customizable" class="border-t pt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Ingredientes (uno por línea)
+            </label>
+            <textarea
+              [(ngModel)]="ingredientsText"
+              name="ingredients"
+              rows="4"
+              placeholder="Carne de res 200g&#10;Pan brioche&#10;Lechuga&#10;Tomate"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent">
+            </textarea>
+          </div>
+
+          <!-- Preview -->
+          <div *ngIf="formData.image" class="border-t pt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Vista previa
+            </label>
+            <img
+              [src]="formData.image"
+              [alt]="formData.name"
+              class="w-32 h-32 object-cover rounded-lg"
+              (error)="onImageError()"
+            />
+          </div>
+
+          <div class="flex space-x-3 pt-4">
+            <button
+              type="button"
+              (click)="cancelEdit()"
+              class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2">
+              <lucide-icon [img]="X" class="h-4 w-4"></lucide-icon>
+              <span>Cancelar</span>
+            </button>
+            <button
+              type="submit"
+              class="flex-1 bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-3 rounded-lg font-bold transition-colors flex items-center justify-center space-x-2">
+              <lucide-icon [img]="Save" class="h-4 w-4"></lucide-icon>
+              <span>{{editingItem ? 'Actualizar' : 'Guardar'}}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Menu Items Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div *ngFor="let item of menuItems"
+           class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+        <div class="relative h-48 overflow-hidden">
+          <img
+            [src]="item.image"
+            [alt]="item.name"
+            class="w-full h-full object-cover"
+          />
+          <div class="absolute top-3 right-3">
+            <div class="bg-[#fac20a] text-[#2a23b8] px-2 py-1 rounded-full text-sm font-bold">
+              ${{item.price.toFixed(2)}}
+            </div>
+          </div>
+          <div *ngIf="!item.available" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <span class="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+              No disponible
+            </span>
+          </div>
+          <div *ngIf="item.customizable" class="absolute top-3 left-3">
+            <div class="bg-[#ed450d] text-white px-2 py-1 rounded-full text-xs font-medium">
+              Personalizable
+            </div>
+          </div>
+        </div>
+
+        <div class="p-6">
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="text-lg font-bold text-gray-800">{{item.name}}</h3>
+            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+              {{item.category}}
+            </span>
+          </div>
+          <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{item.description}}</p>
+
+          <div *ngIf="item.customizable && item.ingredients" class="mb-4">
+            <p class="text-xs text-gray-500 mb-1">Ingredientes:</p>
+            <div class="flex flex-wrap gap-1">
+              <span *ngFor="let ingredient of item.ingredients.slice(0, 3)"
+                    class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                {{ingredient}}
+              </span>
+              <span *ngIf="item.ingredients.length > 3"
+                    class="text-xs text-gray-500">
+                +{{item.ingredients.length - 3}} más
+              </span>
+            </div>
+          </div>
+
+          <div class="flex space-x-2">
+            <button
+              (click)="editItem(item)"
+              class="flex-1 bg-[#8624ce] hover:bg-[#8624ce]/90 text-white py-2 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors">
+              <lucide-icon [img]="Edit" class="h-4 w-4"></lucide-icon>
+              <span>Editar</span>
+            </button>
+            <button
+              (click)="deleteItem(item.id)"
+              class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors">
+              <lucide-icon [img]="Trash2" class="h-4 w-4"></lucide-icon>
+              <span>Eliminar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

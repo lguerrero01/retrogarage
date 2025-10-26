@@ -1,0 +1,113 @@
+<div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
+  <div class="bg-gradient-to-r from-[#2a23b8] to-[#8624ce] text-white p-4">
+    <div class="flex justify-between items-start">
+      <div>
+        <h3 class="text-lg font-bold">Pedido #{{order.id.slice(-6)}}</h3>
+        <p class="opacity-90 flex items-center">
+          <lucide-icon [img]="Clock" class="h-4 w-4 mr-1"></lucide-icon>
+          {{formatTime(order.timestamp)}}
+        </p>
+      </div>
+      <div [class]="'px-3 py-1 rounded-full text-sm font-medium ' + getStatusColor(order.status)">
+        {{getStatusText(order.status)}}
+      </div>
+    </div>
+  </div>
+
+  <div class="p-6">
+    <!-- Customer Info -->
+    <div class="mb-4 space-y-2">
+      <div class="flex items-center text-gray-700">
+        <lucide-icon [img]="User" class="h-4 w-4 mr-2 text-[#ed450d]"></lucide-icon>
+        <span class="font-medium">{{order.customer.name}}</span>
+      </div>
+      <div class="flex items-center text-gray-700">
+        <lucide-icon [img]="Phone" class="h-4 w-4 mr-2 text-[#ed450d]"></lucide-icon>
+        <span>{{order.customer.phone}}</span>
+      </div>
+      <div *ngIf="order.customer.table" class="flex items-center text-gray-700">
+        <lucide-icon [img]="MapPin" class="h-4 w-4 mr-2 text-[#ed450d]"></lucide-icon>
+        <span>Mesa {{order.customer.table}}</span>
+      </div>
+      <div *ngIf="order.customer.notes" class="flex items-start text-gray-700">
+        <lucide-icon [img]="FileText" class="h-4 w-4 mr-2 text-[#ed450d] mt-0.5"></lucide-icon>
+        <span class="text-sm">{{order.customer.notes}}</span>
+      </div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="mb-4">
+      <h4 class="font-semibold text-gray-800 mb-2">Artículos:</h4>
+      <div class="space-y-2">
+        <div *ngFor="let item of order.items"
+             class="flex justify-between items-start bg-gray-50 rounded-lg p-3">
+          <div class="flex items-start space-x-3 flex-1">
+            <img
+              [src]="item.image"
+              [alt]="item.name"
+              class="w-12 h-12 object-cover rounded-lg flex-shrink-0"
+            />
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-gray-800">{{item.name}}</p>
+              <p class="text-sm text-gray-600">Cantidad: {{item.quantity}}</p>
+
+              <!-- Customization Details -->
+              <div *ngIf="item.customizable && (item.selectedIngredients || item.removedIngredients)"
+                   class="mt-2 text-xs">
+                <div *ngIf="item.selectedIngredients && item.selectedIngredients.length > 0"
+                     class="flex items-start space-x-1 mb-1">
+                  <lucide-icon [img]="Settings" class="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0"></lucide-icon>
+                  <div>
+                    <span class="text-green-700 font-medium">Con:</span>
+                    <span class="text-green-600 ml-1">{{item.selectedIngredients.join(', ')}}</span>
+                  </div>
+                </div>
+                <div *ngIf="item.removedIngredients && item.removedIngredients.length > 0"
+                     class="flex items-start space-x-1">
+                  <lucide-icon [img]="Settings" class="h-3 w-3 text-red-600 mt-0.5 flex-shrink-0"></lucide-icon>
+                  <div>
+                    <span class="text-red-700 font-medium">Sin:</span>
+                    <span class="text-red-600 ml-1">{{item.removedIngredients.join(', ')}}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <span class="font-bold text-[#ed450d] flex-shrink-0 ml-2">
+            ${{(item.price * item.quantity).toFixed(2)}}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Total and Actions -->
+    <div class="border-t pt-4">
+      <div class="flex justify-between items-center mb-4">
+        <span class="text-lg font-bold text-gray-800">Total:</span>
+        <span class="text-xl font-bold text-[#ed450d]">${{order.total.toFixed(2)}}</span>
+      </div>
+
+      <div *ngIf="order.estimatedTime && order.status !== 'completed'" class="mb-4 text-center">
+        <p class="text-sm text-gray-600">
+          Tiempo estimado: <span class="font-medium">{{order.estimatedTime}} min</span>
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="space-y-2">
+        <button *ngIf="canAdvanceStatus(order.status)"
+          (click)="advanceStatus()"
+          class="w-full bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-3 rounded-lg font-bold transition-colors">
+          {{getButtonText(order.status)}}
+        </button>
+
+        <button *ngIf="order.status === 'completed'"
+          (click)="generateInvoice()"
+          class="w-full bg-[#8624ce] hover:bg-[#8624ce]/90 text-white py-2 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors">
+          <lucide-icon [img]="Receipt" class="h-4 w-4"></lucide-icon>
+          <span>Generar Factura</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

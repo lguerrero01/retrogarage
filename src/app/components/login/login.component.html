@@ -1,0 +1,206 @@
+<!-- Modal Overlay -->
+<div *ngIf="isModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <!-- Close Button for Modal -->
+    <div class="absolute top-4 right-4 z-10">
+      <button
+        (click)="closeModal()"
+        class="text-white hover:text-gray-200 transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-[#2a23b8] to-[#8624ce] text-white p-8 text-center">
+      <lucide-icon [img]="ChefHat" class="h-16 w-16 mx-auto mb-4"></lucide-icon>
+      <h1 class="text-2xl font-bold mb-2">Retro Garage</h1>
+      <p class="opacity-90">Panel de Administración</p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="p-8">
+      <form (ngSubmit)="onLogin()" class="space-y-6">
+        <!-- Username Field -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Usuario
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <lucide-icon [img]="User" class="h-5 w-5 text-gray-400"></lucide-icon>
+            </div>
+            <input
+              type="text"
+              [(ngModel)]="username"
+              name="username"
+              required
+              class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent transition-colors"
+              placeholder="Ingresa tu usuario"
+            />
+          </div>
+        </div>
+
+        <!-- Password Field -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Contraseña
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <lucide-icon [img]="Lock" class="h-5 w-5 text-gray-400"></lucide-icon>
+            </div>
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              required
+              class="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent transition-colors"
+              placeholder="Ingresa tu contraseña"
+            />
+            <button
+              type="button"
+              (click)="togglePasswordVisibility()"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <lucide-icon [img]="showPassword ? EyeOff : Eye" class="h-5 w-5 text-gray-400 hover:text-gray-600"></lucide-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error Message -->
+        <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {{errorMessage}}
+        </div>
+
+        <!-- Login Button -->
+        <button
+          type="submit"
+          [disabled]="isLoading"
+          class="w-full bg-gradient-to-r from-[#2a23b8] to-[#8624ce] hover:from-[#2a23b8]/90 hover:to-[#8624ce]/90 text-white py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+          <span *ngIf="!isLoading">Iniciar Sesión</span>
+          <span *ngIf="isLoading" class="flex items-center justify-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Iniciando...
+          </span>
+        </button>
+      </form>
+
+      <!-- Demo Credentials -->
+      <div class="mt-8 p-4 bg-gray-50 rounded-lg">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Credenciales de Demo:</h3>
+        <div class="space-y-1 text-xs text-gray-600">
+          <div class="flex justify-between">
+            <span class="font-medium">Administrador:</span>
+            <span>admin / admin123</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="font-medium">Chef:</span>
+            <span>chef / chef123</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Full Screen Login -->
+<div *ngIf="!isModal" class="min-h-screen bg-gradient-to-br from-[#2a23b8] to-[#8624ce] flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-[#2a23b8] to-[#8624ce] text-white p-8 text-center">
+      <lucide-icon [img]="ChefHat" class="h-16 w-16 mx-auto mb-4"></lucide-icon>
+      <h1 class="text-2xl font-bold mb-2">Retro Garage</h1>
+      <p class="opacity-90">Panel de Administración</p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="p-8">
+      <form (ngSubmit)="onLogin()" class="space-y-6">
+        <!-- Username Field -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Usuario
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <lucide-icon [img]="User" class="h-5 w-5 text-gray-400"></lucide-icon>
+            </div>
+            <input
+              type="text"
+              [(ngModel)]="username"
+              name="username"
+              required
+              class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent transition-colors"
+              placeholder="Ingresa tu usuario"
+            />
+          </div>
+        </div>
+
+        <!-- Password Field -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Contraseña
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <lucide-icon [img]="Lock" class="h-5 w-5 text-gray-400"></lucide-icon>
+            </div>
+            <input
+              [type]="showPassword ? 'text' : 'password'"
+              [(ngModel)]="password"
+              name="password"
+              required
+              class="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent transition-colors"
+              placeholder="Ingresa tu contraseña"
+            />
+            <button
+              type="button"
+              (click)="togglePasswordVisibility()"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center">
+              <lucide-icon [img]="showPassword ? EyeOff : Eye" class="h-5 w-5 text-gray-400 hover:text-gray-600"></lucide-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Error Message -->
+        <div *ngIf="errorMessage" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {{errorMessage}}
+        </div>
+
+        <!-- Login Button -->
+        <button
+          type="submit"
+          [disabled]="isLoading"
+          class="w-full bg-gradient-to-r from-[#2a23b8] to-[#8624ce] hover:from-[#2a23b8]/90 hover:to-[#8624ce]/90 text-white py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+          <span *ngIf="!isLoading">Iniciar Sesión</span>
+          <span *ngIf="isLoading" class="flex items-center justify-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Iniciando...
+          </span>
+        </button>
+      </form>
+
+      <!-- Demo Credentials -->
+      <div class="mt-8 p-4 bg-gray-50 rounded-lg">
+        <h3 class="text-sm font-semibold text-gray-700 mb-2">Credenciales de Demo:</h3>
+        <div class="space-y-1 text-xs text-gray-600">
+          <div class="flex justify-between">
+            <span class="font-medium">Administrador:</span>
+            <span>admin / admin123</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="font-medium">Chef:</span>
+            <span>chef / chef123</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,91 @@
+<div class="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+  <div class="relative h-48 overflow-hidden">
+    <img
+      [src]="item.image"
+      [alt]="item.name"
+      class="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+    />
+    <div class="absolute top-3 right-3">
+      <div class="bg-[#fac20a] text-[#2a23b8] px-2 py-1 rounded-full text-sm font-bold">
+        ${{item.price.toFixed(2)}}
+      </div>
+    </div>
+    <div *ngIf="item.customizable" class="absolute top-3 left-3">
+      <div class="bg-[#ed450d] text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+        <lucide-icon [img]="Settings" class="h-3 w-3 mr-1"></lucide-icon>
+        Personalizable
+      </div>
+    </div>
+  </div>
+
+  <div class="p-6">
+    <h3 class="text-xl font-bold text-gray-800 mb-2">{{item.name}}</h3>
+    <p class="text-gray-600 text-sm mb-4 line-clamp-2">{{item.description}}</p>
+
+    <div *ngIf="item.available" class="space-y-4">
+      <!-- Customization Options -->
+      <div *ngIf="item.customizable && item.ingredients && showCustomization" class="border-t pt-4">
+        <h4 class="font-semibold text-gray-800 mb-3">Personaliza tu pedido:</h4>
+        <div class="space-y-2 max-h-40 overflow-y-auto">
+          <label *ngFor="let ingredient of item.ingredients"
+                 class="flex items-center space-x-2 text-sm">
+            <input
+              type="checkbox"
+              [checked]="isIngredientSelected(ingredient)"
+              (change)="toggleIngredient(ingredient, $event)"
+              class="rounded border-gray-300 text-[#ed450d] focus:ring-[#ed450d]"
+            />
+            <span [class]="isIngredientSelected(ingredient) ? 'text-gray-800' : 'text-gray-500 line-through'">
+              {{ingredient}}
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Quantity and Add Button -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <button
+            (click)="decreaseQuantity()"
+            class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+            <lucide-icon [img]="Minus" class="h-4 w-4"></lucide-icon>
+          </button>
+          <span class="font-medium text-lg w-8 text-center">{{quantity}}</span>
+          <button
+            (click)="increaseQuantity()"
+            class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors">
+            <lucide-icon [img]="Plus" class="h-4 w-4"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="flex space-x-2">
+          <button *ngIf="item.customizable"
+            (click)="toggleCustomization()"
+            [class]="showCustomization
+              ? 'bg-[#8624ce] text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+            class="px-3 py-2 rounded-lg font-medium transition-colors flex items-center space-x-1">
+            <lucide-icon [img]="Settings" class="h-4 w-4"></lucide-icon>
+            <span class="hidden sm:inline">{{showCustomization ? 'Ocultar' : 'Personalizar'}}</span>
+          </button>
+
+          <button
+            (click)="addToCart()"
+            [disabled]="isAdding"
+            [class]="isAdding
+              ? 'bg-green-500 text-white scale-105'
+              : 'bg-[#ed450d] hover:bg-[#ed450d]/90 text-white transform hover:scale-105'"
+            class="px-6 py-2 rounded-lg font-medium transition-all duration-300">
+            {{isAdding ? '¡Agregado!' : 'Agregar'}}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="!item.available" class="text-center">
+      <span class="inline-block bg-gray-100 text-gray-500 px-4 py-2 rounded-lg">
+        No disponible
+      </span>
+    </div>
+  </div>
+</div>

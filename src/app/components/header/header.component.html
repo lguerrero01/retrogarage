@@ -1,0 +1,80 @@
+<header class="bg-gradient-to-r from-[#2a23b8] to-[#8624ce] text-white shadow-lg sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <!-- Logo -->
+      <div class="flex items-center space-x-2">
+        <lucide-icon [img]="ChefHat" class="h-8 w-8"></lucide-icon>
+        <h1 class="text-xl font-bold">Retro Garage</h1>
+      </div>
+
+      <!-- Navigation -->
+      <div class="flex items-center space-x-4">
+        <!-- Connection Status (only in kitchen view) -->
+        <app-connection-status *ngIf="currentView === 'kitchen' && isAuthenticated"></app-connection-status>
+
+        <!-- Notifications (only in kitchen view) -->
+        <app-notification-panel *ngIf="currentView === 'kitchen' && isAuthenticated"></app-notification-panel>
+
+        <!-- Cart (only in menu view) -->
+        <div *ngIf="currentView === 'menu'" class="relative">
+          <button class="flex items-center space-x-1 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg transition-colors">
+            <lucide-icon [img]="ShoppingCart" class="h-5 w-5"></lucide-icon>
+            <span *ngIf="cartItemCount > 0"
+                  class="absolute -top-2 -right-2 bg-[#ed450d] text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {{cartItemCount}}
+            </span>
+          </button>
+        </div>
+
+        <!-- User Info (when authenticated) -->
+        <div *ngIf="isAuthenticated && currentUser" class="flex items-center space-x-2 bg-white/10 px-3 py-2 rounded-lg">
+          <lucide-icon [img]="User" class="h-4 w-4"></lucide-icon>
+          <span class="text-sm font-medium">{{currentUser.name}}</span>
+        </div>
+
+        <!-- Navigation buttons when in menu view and authenticated -->
+        <div *ngIf="currentView === 'menu' && isAuthenticated" class="flex items-center space-x-2">
+          <!-- Kitchen button -->
+          <button *ngIf="canAccessKitchen"
+            (click)="goToKitchen()"
+            class="flex items-center space-x-2 bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 px-4 py-2 rounded-lg font-medium transition-colors">
+            <lucide-icon [img]="ChefHat" class="h-4 w-4"></lucide-icon>
+            <span class="hidden sm:inline">Cocina</span>
+          </button>
+
+          <!-- Admin button -->
+          <button *ngIf="canAccessAdmin"
+            (click)="goToAdmin()"
+            class="flex items-center space-x-2 bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 px-4 py-2 rounded-lg font-medium transition-colors">
+            <lucide-icon [img]="Settings" class="h-4 w-4"></lucide-icon>
+            <span class="hidden sm:inline">Admin</span>
+          </button>
+        </div>
+
+        <!-- Back to menu button when in kitchen or admin view -->
+        <button *ngIf="currentView !== 'menu' && isAuthenticated"
+          (click)="goToMenu()"
+          class="flex items-center space-x-2 bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 px-4 py-2 rounded-lg font-medium transition-colors">
+          <lucide-icon [img]="Menu" class="h-4 w-4"></lucide-icon>
+          <span class="hidden sm:inline">Ver Menú</span>
+        </button>
+
+        <!-- Login Button (when not authenticated) -->
+        <button *ngIf="!isAuthenticated"
+          (click)="showLogin()"
+          class="flex items-center space-x-2 bg-[#2a23b8] hover:bg-[#2a23b8]/90 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+          <lucide-icon [img]="User" class="h-4 w-4"></lucide-icon>
+          <span class="hidden sm:inline">Iniciar Sesión</span>
+        </button>
+
+        <!-- Logout Button (when authenticated) -->
+        <button *ngIf="isAuthenticated"
+          (click)="logout()"
+          class="flex items-center space-x-2 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-medium transition-colors">
+          <lucide-icon [img]="LogOut" class="h-4 w-4"></lucide-icon>
+          <span class="hidden sm:inline">Salir</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
