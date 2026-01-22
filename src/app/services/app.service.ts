@@ -4,6 +4,8 @@ import { CartItem, Order, Customer, MenuItem } from '../models/types';
 import { menuItems as defaultMenuItems } from '../data/menu-items';
 import { WebSocketService } from './websocket.service';
 import { NotificationService } from './notification.service';
+import { FirebaseService } from './firebase.service';
+import { collection, updateDoc, doc, Timestamp, setDoc } from 'firebase/firestore';
 
 @Injectable({
   providedIn: 'root'
@@ -17,16 +19,22 @@ export class AppService {
   orders$ = this.ordersSubject.asObservable();
   menuItems$ = this.menuItemsSubject.asObservable();
 
+  private isUpdatingFromFirestore = false; // Flag para evitar loops de actualización
+
   constructor(
     private webSocketService: WebSocketService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private firebaseService: FirebaseService
   ) {
+    // Escuchar la colección 'orders' de Firestore en tiempo real
+    this.initializeFirestoreListener();
+
     // Suscribirse a las notificaciones de WebSocket solo si estamos en vista de cocina
     this.webSocketService.newOrder$.subscribe(order => {
       // Solo procesar si la orden no existe ya en la lista
       const currentOrders = this.ordersSubject.value;
       const orderExists = currentOrders.some(existingOrder => existingOrder.id === order.id);
-      
+
       if (!orderExists) {
         const updatedOrders = [order, ...currentOrders];
         this.updateOrdersStorage(updatedOrders);
@@ -37,11 +45,111 @@ export class AppService {
       // Actualizar el estado de la orden cuando llegue una actualización por WebSocket
       const currentOrders = this.ordersSubject.value;
       const orderExists = currentOrders.some(order => order.id === orderId);
-      
+
       if (orderExists) {
         this.updateOrderStatus(orderId, status as Order['status']);
       }
     });
+  }
+
+  /**
+   * Inicializa el listener de Firestore para la colección 'orders'
+   * Sincroniza automáticamente las órdenes en tiempo real
+   */
+  private initializeFirestoreListener() {
+    this.firebaseService.listenToCollection<any>('orders')
+      .subscribe({
+        next: (update) => {
+          if (update.error) {
+            console.error('Error listening to orders collection:', update.error);
+            return;
+          }
+
+          // Convertir los datos de Firestore a objetos Order
+          const firestoreOrders = update.data.map(orderData => this.convertFirestoreToOrder(orderData));
+
+          // Actualizar el BehaviorSubject sin causar un loop
+          this.isUpdatingFromFirestore = true;
+          this.ordersSubject.next(firestoreOrders);
+          localStorage.setItem('restaurant-orders', JSON.stringify(firestoreOrders));
+          this.isUpdatingFromFirestore = false;
+
+          console.log('Orders updated from Firestore:', firestoreOrders);
+        },
+        error: (err) => {
+          console.error('Subscription error:', err);
+        }
+      });
+  }
+
+  /**
+   * Convierte un documento de Firestore a un objeto Order
+   * Maneja la conversión de Timestamps a Date
+   */
+  private convertFirestoreToOrder(firestoreData: any): Order {
+    return {
+      ...firestoreData,
+      timestamp: firestoreData.timestamp?.toDate ? firestoreData.timestamp.toDate() : new Date(firestoreData.timestamp)
+    };
+  }
+
+  /**
+   * Convierte un objeto Order a formato compatible con Firestore
+   * Convierte Date a Timestamp
+   */
+  private convertOrderToFirestore(order: Order): any {
+    return {
+      ...order,
+      timestamp: Timestamp.fromDate(order.timestamp)
+    };
+  }
+
+  /**
+   * Guarda una nueva orden en Firestore
+   * Usa el order.id como ID del documento para facilitar actualizaciones posteriores
+   */
+  private async saveOrderToFirestore(order: Order): Promise<void> {
+    if (this.isUpdatingFromFirestore) {
+      return; // Evitar loop: no guardar si estamos actualizando desde Firestore
+    }
+
+    try {
+      const db = this.firebaseService.getFirestore();
+      const orderRef = doc(db, 'orders', order.id);
+      const orderData = this.convertOrderToFirestore(order);
+
+      // Usar setDoc para especificar el ID del documento
+      await setDoc(orderRef, orderData);
+      console.log('Order saved to Firestore:', order.id);
+    } catch (error) {
+      console.error('Error saving order to Firestore:', error);
+    }
+  }
+
+  /**
+   * Actualiza una orden existente en Firestore
+   * Usa el orderId como ID del documento de Firestore
+   */
+  private async updateOrderInFirestore(orderId: string, updates: Partial<Order>): Promise<void> {
+    if (this.isUpdatingFromFirestore) {
+      return; // Evitar loop
+    }
+
+    try {
+      const db = this.firebaseService.getFirestore();
+      const orderRef = doc(db, 'orders', orderId);
+
+      // Convertir campos Date a Timestamp si existen
+      const orderData: any = { ...updates };
+      if (orderData.timestamp) {
+        orderData.timestamp = Timestamp.fromDate(orderData.timestamp);
+      }
+
+      await updateDoc(orderRef, orderData);
+      console.log('Order updated in Firestore:', orderId);
+    } catch (error) {
+      console.error('Error updating order in Firestore:', error);
+    }
   }
 
   private getStoredCart(): CartItem[] {
@@ -148,6 +256,9 @@ export class AppService {
     this.updateOrdersStorage([newOrder, ...currentOrders]);
     this.clearCart();
 
+    // Guardar en Firestore
+    this.saveOrderToFirestore(newOrder);
+
     // Enviar la nueva orden por WebSocket (esto simula el envío al servidor)
     this.webSocketService.sendNewOrder(newOrder);
 
@@ -161,6 +272,9 @@ export class AppService {
       order.id === orderId ? { ...order, status } : order
     );
     this.updateOrdersStorage(updatedOrders);
+
+    // Actualizar en Firestore
+    this.updateOrderInFirestore(orderId, { status });
 
     // Enviar actualización de estado por WebSocket
     this.webSocketService.sendOrderStatusUpdate(orderId, status);
