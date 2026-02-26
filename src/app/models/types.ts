@@ -28,7 +28,7 @@ export interface Order {
   customer: Customer;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'completed';
+  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   timestamp: Date;
   estimatedTime?: number;
 }
@@ -44,6 +44,7 @@ export interface DailySummary {
     preparing: number;
     ready: number;
     completed: number;
+    cancelled: number;
   };
   ordersByCategory: { [category: string]: number };
   topItems: { name: string; quantity: number; revenue: number }[];
@@ -68,13 +69,13 @@ export interface Invoice {
 
 export interface User {
   id: string;
-  username: string;
-  password: string;
-  role: 'admin' | 'chef';
+  email: string;
+  role: 'admin' | 'chef' | 'waiter';
   name: string;
 }
 
 export interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
+  idToken?: string | null;
 }

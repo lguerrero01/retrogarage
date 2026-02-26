@@ -22,22 +22,22 @@
     <!-- Login Form -->
     <div class="p-8">
       <form (ngSubmit)="onLogin()" class="space-y-6">
-        <!-- Username Field -->
+        <!-- Email Field -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Usuario
+            Correo electrónico
           </label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <lucide-icon [img]="User" class="h-5 w-5 text-gray-400"></lucide-icon>
+              <lucide-icon [img]="Mail" class="h-5 w-5 text-gray-400"></lucide-icon>
             </div>
             <input
-              type="text"
-              [(ngModel)]="username"
-              name="username"
+              type="email"
+              [(ngModel)]="email"
+              name="email"
               required
               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent transition-colors"
-              placeholder="Ingresa tu usuario"
+              placeholder="Ingresa tu correo"
             />
           </div>
         </div>
@@ -88,21 +88,6 @@
           </span>
         </button>
       </form>
-
-      <!-- Demo Credentials -->
-      <div class="mt-8 p-4 bg-gray-50 rounded-lg">
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Credenciales de Demo:</h3>
-        <div class="space-y-1 text-xs text-gray-600">
-          <div class="flex justify-between">
-            <span class="font-medium">Administrador:</span>
-            <span>admin / admin123</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="font-medium">Chef:</span>
-            <span>chef / chef123</span>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -120,22 +105,22 @@
     <!-- Login Form -->
     <div class="p-8">
       <form (ngSubmit)="onLogin()" class="space-y-6">
-        <!-- Username Field -->
+        <!-- Email Field -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Usuario
+            Correo electrónico
           </label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <lucide-icon [img]="User" class="h-5 w-5 text-gray-400"></lucide-icon>
+              <lucide-icon [img]="Mail" class="h-5 w-5 text-gray-400"></lucide-icon>
             </div>
             <input
-              type="text"
-              [(ngModel)]="username"
-              name="username"
+              type="email"
+              [(ngModel)]="email"
+              name="email"
               required
               class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2a23b8] focus:border-transparent transition-colors"
-              placeholder="Ingresa tu usuario"
+              placeholder="Ingresa tu correo"
             />
           </div>
         </div>
@@ -186,21 +171,6 @@
           </span>
         </button>
       </form>
-
-      <!-- Demo Credentials -->
-      <div class="mt-8 p-4 bg-gray-50 rounded-lg">
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Credenciales de Demo:</h3>
-        <div class="space-y-1 text-xs text-gray-600">
-          <div class="flex justify-between">
-            <span class="font-medium">Administrador:</span>
-            <span>admin / admin123</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="font-medium">Chef:</span>
-            <span>chef / chef123</span>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </div>

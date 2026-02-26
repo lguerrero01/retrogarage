@@ -67,7 +67,8 @@ export class BillingService {
       pending: dayOrders.filter(o => o.status === 'pending').length,
       preparing: dayOrders.filter(o => o.status === 'preparing').length,
       ready: dayOrders.filter(o => o.status === 'ready').length,
-      completed: dayOrders.filter(o => o.status === 'completed').length
+      completed: dayOrders.filter(o => o.status === 'completed').length,
+      cancelled: dayOrders.filter(o => o.status === 'cancelled').length
     };
 
     const ordersByCategory: { [category: string]: number } = {};

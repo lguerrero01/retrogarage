@@ -63,6 +63,12 @@ State is managed through **RxJS BehaviorSubjects** in services, with data persis
 
 - **NotificationService**: Kitchen notification system
 - **BillingService**: Invoice generation and management
+- **FirebaseService** (`src/app/services/firebase.service.ts`): Firestore integration
+  - Real-time collection listeners using RxJS observables
+  - Type-safe generic methods for any collection
+  - Automatic cleanup and unsubscribe management
+  - Support for Firestore query constraints (where, orderBy, limit, etc.)
+  - See `FIREBASE_USAGE.md` for detailed examples
 
 ### Data Flow
 
@@ -140,3 +146,29 @@ All data stored in localStorage with keys:
 
 - Admin: `admin` / `admin123` (access to all views)
 - Chef: `chef` / `chef123` (kitchen view only)
+
+### Firebase/Firestore Integration
+
+The app includes a complete Firebase/Firestore integration service:
+
+**Setup**:
+1. Copy `.env.example` to `.env`
+2. Add your Firebase credentials from [Firebase Console](https://console.firebase.google.com/)
+3. Configure Firestore security rules in Firebase Console
+
+**Usage**:
+- Import `FirebaseService` from `src/app/services/firebase.service.ts`
+- Use `listenToCollection<T>()` to subscribe to real-time updates
+- Supports query constraints: `where()`, `orderBy()`, `limit()`, etc.
+- Automatic cleanup with `unsubscribeFromCollection()` or `unsubscribeAll()`
+
+**Environment Variables**:
+- `FIREBASE_API_KEY`: Firebase API key
+- `FIREBASE_AUTH_DOMAIN`: Auth domain (project-id.firebaseapp.com)
+- `FIREBASE_PROJECT_ID`: Firebase project ID
+- `FIREBASE_STORAGE_BUCKET`: Storage bucket URL
+- `FIREBASE_MESSAGING_SENDER_ID`: Cloud messaging sender ID
+- `FIREBASE_APP_ID`: Firebase app ID
+- `FIREBASE_MEASUREMENT_ID`: Google Analytics measurement ID
+
+For detailed examples and advanced usage, see `FIREBASE_USAGE.md`.

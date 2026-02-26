@@ -2,10 +2,20 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { CartItem, Order, Customer, MenuItem } from '../models/types';
 import { menuItems as defaultMenuItems } from '../data/menu-items';
-import { WebSocketService } from './websocket.service';
 import { NotificationService } from './notification.service';
 import { FirebaseService } from './firebase.service';
-import { collection, updateDoc, doc, Timestamp, setDoc } from 'firebase/firestore';
+import { AuthService } from './auth.service';
+import { ProductApiService } from './product-api.service';
+import { OrderApiService } from './order-api.service';
+import {
+  apiProductToMenuItem,
+  apiOrderToOrder,
+  cartToCreateOrderRequest,
+  frontendStatusToApi,
+  menuItemToCreateApiProduct,
+  menuItemUpdatesToApi
+} from '../models/adapters';
+import { ApiOrder } from '../models/api.types';
 
 @Injectable({
   providedIn: 'root'
@@ -14,67 +24,43 @@ export class AppService {
   private cartSubject = new BehaviorSubject<CartItem[]>(this.getStoredCart());
   private ordersSubject = new BehaviorSubject<Order[]>(this.getStoredOrders());
   private menuItemsSubject = new BehaviorSubject<MenuItem[]>(this.getStoredMenuItems());
+  private productCategories: Record<string, string> = this.loadCategoryMap();
 
   cart$ = this.cartSubject.asObservable();
   orders$ = this.ordersSubject.asObservable();
   menuItems$ = this.menuItemsSubject.asObservable();
 
-  private isUpdatingFromFirestore = false; // Flag para evitar loops de actualización
-
   constructor(
-    private webSocketService: WebSocketService,
     private notificationService: NotificationService,
-    private firebaseService: FirebaseService
+    private firebaseService: FirebaseService,
+    private authService: AuthService,
+    private productApiService: ProductApiService,
+    private orderApiService: OrderApiService
   ) {
-    // Escuchar la colección 'orders' de Firestore en tiempo real
     this.initializeFirestoreListener();
-
-    // Suscribirse a las notificaciones de WebSocket solo si estamos en vista de cocina
-    this.webSocketService.newOrder$.subscribe(order => {
-      // Solo procesar si la orden no existe ya en la lista
-      const currentOrders = this.ordersSubject.value;
-      const orderExists = currentOrders.some(existingOrder => existingOrder.id === order.id);
-
-      if (!orderExists) {
-        const updatedOrders = [order, ...currentOrders];
-        this.updateOrdersStorage(updatedOrders);
-      }
-    });
-
-    this.webSocketService.orderStatusUpdate$.subscribe(({ orderId, status }) => {
-      // Actualizar el estado de la orden cuando llegue una actualización por WebSocket
-      const currentOrders = this.ordersSubject.value;
-      const orderExists = currentOrders.some(order => order.id === orderId);
-
-      if (orderExists) {
-        this.updateOrderStatus(orderId, status as Order['status']);
-      }
-    });
+    this.loadProductsFromApi();
   }
 
-  /**
-   * Inicializa el listener de Firestore para la colección 'orders'
-   * Sincroniza automáticamente las órdenes en tiempo real
-   */
   private initializeFirestoreListener() {
-    this.firebaseService.listenToCollection<any>('orders')
+    this.firebaseService.listenToCollection<ApiOrder>('pedidos_activos')
       .subscribe({
         next: (update) => {
           if (update.error) {
-            console.error('Error listening to orders collection:', update.error);
+            console.error('Error listening to pedidos_activos:', update.error);
             return;
           }
 
-          // Convertir los datos de Firestore a objetos Order
-          const firestoreOrders = update.data.map(orderData => this.convertFirestoreToOrder(orderData));
-
-          // Actualizar el BehaviorSubject sin causar un loop
-          this.isUpdatingFromFirestore = true;
-          this.ordersSubject.next(firestoreOrders);
-          localStorage.setItem('restaurant-orders', JSON.stringify(firestoreOrders));
-          this.isUpdatingFromFirestore = false;
-
-          console.log('Orders updated from Firestore:', firestoreOrders);
+          const menuMap = new Map(this.menuItemsSubject.value.map(m => [m.id, m]));
+          const orders = update.data.map(o => {
+            const order = apiOrderToOrder(o);
+            order.items = order.items.map(item => ({
+              ...item,
+              category: menuMap.get(item.id)?.category || item.category || 'Sin categoría'
+            }));
+            return order;
+          });
+          this.ordersSubject.next(orders);
+          localStorage.setItem('restaurant-orders', JSON.stringify(orders));
         },
         error: (err) => {
           console.error('Subscription error:', err);
@@ -82,74 +68,48 @@ export class AppService {
       });
   }
 
-  /**
-   * Convierte un documento de Firestore a un objeto Order
-   * Maneja la conversión de Timestamps a Date
-   */
-  private convertFirestoreToOrder(firestoreData: any): Order {
-    return {
-      ...firestoreData,
-      timestamp: firestoreData.timestamp?.toDate ? firestoreData.timestamp.toDate() : new Date(firestoreData.timestamp)
-    };
+  private loadProductsFromApi() {
+    this.productApiService.getProducts()
+      .then(ps => {
+        const items = this.applyCategoryMap(ps.map(apiProductToMenuItem));
+        this.menuItemsSubject.next(items);
+        localStorage.setItem('restaurant-menu-items', JSON.stringify(items));
+        console.log('Products loaded from API');
+      })
+      .catch(() => {
+        // Fallback: keep items already loaded from localStorage
+      });
+
+    // Real-time sync after mutations
+    this.firebaseService.listenToCollection<any>('products')
+      .subscribe({
+        next: (update) => {
+          if (update.error || !update.data.length) return;
+          const items = this.applyCategoryMap(update.data.map(apiProductToMenuItem));
+          this.menuItemsSubject.next(items);
+          localStorage.setItem('restaurant-menu-items', JSON.stringify(items));
+        },
+        error: (err) => console.error('Products listener error:', err)
+      });
   }
 
-  /**
-   * Convierte un objeto Order a formato compatible con Firestore
-   * Convierte Date a Timestamp
-   */
-  private convertOrderToFirestore(order: Order): any {
-    return {
-      ...order,
-      timestamp: Timestamp.fromDate(order.timestamp)
-    };
-  }
-
-  /**
-   * Guarda una nueva orden en Firestore
-   * Usa el order.id como ID del documento para facilitar actualizaciones posteriores
-   */
-  private async saveOrderToFirestore(order: Order): Promise<void> {
-    if (this.isUpdatingFromFirestore) {
-      return; // Evitar loop: no guardar si estamos actualizando desde Firestore
-    }
-
+  private loadCategoryMap(): Record<string, string> {
     try {
-      const db = this.firebaseService.getFirestore();
-      const orderRef = doc(db, 'orders', order.id);
-      const orderData = this.convertOrderToFirestore(order);
-
-      // Usar setDoc para especificar el ID del documento
-      await setDoc(orderRef, orderData);
-      console.log('Order saved to Firestore:', order.id);
-    } catch (error) {
-      console.error('Error saving order to Firestore:', error);
+      return JSON.parse(localStorage.getItem('product-categories') ?? '{}');
+    } catch {
+      return {};
     }
   }
 
-  /**
-   * Actualiza una orden existente en Firestore
-   * Usa el orderId como ID del documento de Firestore
-   */
-  private async updateOrderInFirestore(orderId: string, updates: Partial<Order>): Promise<void> {
-    if (this.isUpdatingFromFirestore) {
-      return; // Evitar loop
-    }
+  private saveCategoryMap() {
+    localStorage.setItem('product-categories', JSON.stringify(this.productCategories));
+  }
 
-    try {
-      const db = this.firebaseService.getFirestore();
-      const orderRef = doc(db, 'orders', orderId);
-
-      // Convertir campos Date a Timestamp si existen
-      const orderData: any = { ...updates };
-      if (orderData.timestamp) {
-        orderData.timestamp = Timestamp.fromDate(orderData.timestamp);
-      }
-
-      await updateDoc(orderRef, orderData);
-      console.log('Order updated in Firestore:', orderId);
-    } catch (error) {
-      console.error('Error updating order in Firestore:', error);
-    }
+  private applyCategoryMap(items: MenuItem[]): MenuItem[] {
+    return items.map(item => ({
+      ...item,
+      category: item.category || this.productCategories[item.id] || ''
+    }));
   }
 
   private getStoredCart(): CartItem[] {
@@ -188,24 +148,14 @@ export class AppService {
     this.cartSubject.next(cart);
   }
 
-  private updateOrdersStorage(orders: Order[]) {
-    localStorage.setItem('restaurant-orders', JSON.stringify(orders));
-    this.ordersSubject.next(orders);
-  }
-
-  private updateMenuItemsStorage(items: MenuItem[]) {
-    localStorage.setItem('restaurant-menu-items', JSON.stringify(items));
-    this.menuItemsSubject.next(items);
-  }
-
   addToCart(item: CartItem) {
     const currentCart = this.cartSubject.value;
-    const existingItemIndex = currentCart.findIndex(cartItem => 
-      cartItem.id === item.id && 
+    const existingItemIndex = currentCart.findIndex(cartItem =>
+      cartItem.id === item.id &&
       JSON.stringify(cartItem.selectedIngredients) === JSON.stringify(item.selectedIngredients) &&
       JSON.stringify(cartItem.removedIngredients) === JSON.stringify(item.removedIngredients)
     );
-    
+
     if (existingItemIndex !== -1) {
       const updatedCart = [...currentCart];
       updatedCart[existingItemIndex].quantity += item.quantity;
@@ -216,8 +166,7 @@ export class AppService {
   }
 
   removeFromCart(itemId: string) {
-    const currentCart = this.cartSubject.value;
-    const updatedCart = currentCart.filter(item => item.id !== itemId);
+    const updatedCart = this.cartSubject.value.filter(item => item.id !== itemId);
     this.updateCartStorage(updatedCart);
   }
 
@@ -226,9 +175,8 @@ export class AppService {
       this.removeFromCart(itemId);
       return;
     }
-    
-    const currentCart = this.cartSubject.value;
-    const updatedCart = currentCart.map(item =>
+
+    const updatedCart = this.cartSubject.value.map(item =>
       item.id === itemId ? { ...item, quantity } : item
     );
     this.updateCartStorage(updatedCart);
@@ -239,79 +187,75 @@ export class AppService {
   }
 
   createOrder(customer: Customer) {
-    const currentCart = this.cartSubject.value;
-    if (currentCart.length === 0) return;
+    const items = this.cartSubject.value;
+    if (!items.length) return;
 
-    const newOrder: Order = {
-      id: `order-${Date.now()}`,
-      customer,
-      items: [...currentCart],
-      total: this.getCartTotal(),
-      status: 'pending',
-      timestamp: new Date(),
-      estimatedTime: Math.floor(Math.random() * 30) + 15
-    };
+    const waiterId = this.authService.getCurrentUser()?.id ?? 'anonymous';
+    const request = cartToCreateOrderRequest(items, customer, waiterId);
 
-    const currentOrders = this.ordersSubject.value;
-    this.updateOrdersStorage([newOrder, ...currentOrders]);
-    this.clearCart();
-
-    // Guardar en Firestore
-    this.saveOrderToFirestore(newOrder);
-
-    // Enviar la nueva orden por WebSocket (esto simula el envío al servidor)
-    this.webSocketService.sendNewOrder(newOrder);
-
-    // Crear notificación para el panel de cocina
-    this.notificationService.notifyNewOrder(newOrder.id, newOrder.customer.name);
+    this.orderApiService.createOrder(request)
+      .then(apiOrder => {
+        this.clearCart();
+        this.notificationService.notifyNewOrder(apiOrder.id, customer.name);
+      })
+      .catch(err => console.error('Error creating order:', err));
   }
 
   updateOrderStatus(orderId: string, status: Order['status']) {
-    const currentOrders = this.ordersSubject.value;
-    const updatedOrders = currentOrders.map(order =>
-      order.id === orderId ? { ...order, status } : order
+    const apiStatus = frontendStatusToApi(status);
+
+    this.orderApiService.updateStatus(orderId, apiStatus)
+      .then(() => {
+        if (status === 'completed') {
+          this.orderApiService.archiveOrder(orderId).catch(console.error);
+        }
+      })
+      .catch(err => console.error('Error updating order status:', err));
+
+    // Optimistic update — Firestore listener will sync after
+    const updated = this.ordersSubject.value.map(o =>
+      o.id === orderId ? { ...o, status } : o
     );
-    this.updateOrdersStorage(updatedOrders);
-
-    // Actualizar en Firestore
-    this.updateOrderInFirestore(orderId, { status });
-
-    // Enviar actualización de estado por WebSocket
-    this.webSocketService.sendOrderStatusUpdate(orderId, status);
-
-    // Crear notificación de actualización de estado
+    this.ordersSubject.next(updated);
     this.notificationService.notifyOrderStatusUpdate(orderId, status);
   }
 
   // Menu Management Methods
   addMenuItem(item: MenuItem) {
-    const currentItems = this.menuItemsSubject.value;
-    const newItem = { ...item, id: `item-${Date.now()}` };
-    this.updateMenuItemsStorage([...currentItems, newItem]);
+    const data = menuItemToCreateApiProduct(item);
+    this.productApiService.createProduct(data)
+      .then(apiProduct => {
+        if (item.category) {
+          this.productCategories[apiProduct.id] = item.category;
+          this.saveCategoryMap();
+        }
+      })
+      .catch(err => console.error('Error creating product:', err));
   }
 
   updateMenuItem(itemId: string, updates: Partial<MenuItem>) {
-    const currentItems = this.menuItemsSubject.value;
-    const updatedItems = currentItems.map(item =>
-      item.id === itemId ? { ...item, ...updates } : item
-    );
-    this.updateMenuItemsStorage(updatedItems);
+    if (updates.category !== undefined) {
+      this.productCategories[itemId] = updates.category;
+      this.saveCategoryMap();
+    }
+    const data = menuItemUpdatesToApi(updates);
+    this.productApiService.updateProduct(itemId, data)
+      .catch(err => console.error('Error updating product:', err));
   }
 
   deleteMenuItem(itemId: string) {
-    const currentItems = this.menuItemsSubject.value;
-    const updatedItems = currentItems.filter(item => item.id !== itemId);
-    this.updateMenuItemsStorage(updatedItems);
+    delete this.productCategories[itemId];
+    this.saveCategoryMap();
+    this.productApiService.deleteProduct(itemId)
+      .catch(err => console.error('Error deleting product:', err));
   }
 
   getCartTotal(): number {
-    const currentCart = this.cartSubject.value;
-    return currentCart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return this.cartSubject.value.reduce((total, item) => total + (item.price * item.quantity), 0);
   }
 
   getCartItemCount(): number {
-    const currentCart = this.cartSubject.value;
-    return currentCart.reduce((count, item) => count + item.quantity, 0);
+    return this.cartSubject.value.reduce((count, item) => count + item.quantity, 0);
   }
 
   getCurrentCart(): CartItem[] {

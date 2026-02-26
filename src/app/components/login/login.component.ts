@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { LucideAngularModule, ChefHat, Lock, User, Eye, EyeOff } from 'lucide-angular';
+import { LucideAngularModule, ChefHat, Lock, Mail, Eye, EyeOff } from 'lucide-angular';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -15,55 +14,47 @@ import { AuthService } from '../../services/auth.service';
 export class LoginComponent implements OnInit {
   ChefHat = ChefHat;
   Lock = Lock;
-  User = User;
+  Mail = Mail;
   Eye = Eye;
   EyeOff = EyeOff;
 
-  username = '';
+  email = '';
   password = '';
   errorMessage = '';
   isLoading = false;
   showPassword = false;
   isModal = false;
 
-  constructor(
-    private authService: AuthService,
-    private router: Router
-  ) {}
+  constructor(private authService: AuthService) {}
 
   ngOnInit() {
-    // Verificar si se debe mostrar como modal
     this.authService.showLoginModal$.subscribe(showModal => {
       this.isModal = showModal;
     });
   }
 
-  onLogin() {
-    if (!this.username || !this.password) {
-      this.errorMessage = 'Por favor ingresa usuario y contraseña';
+  async onLogin() {
+    if (!this.email || !this.password) {
+      this.errorMessage = 'Por favor ingresa correo y contraseña';
       return;
     }
 
     this.isLoading = true;
     this.errorMessage = '';
 
-    // Simular delay de autenticación
-    setTimeout(() => {
-      const success = this.authService.login(this.username, this.password);
+    try {
+      const success = await this.authService.login(this.email, this.password);
 
       if (!success) {
-        this.errorMessage = 'Usuario o contraseña incorrectos';
-      } else {
-        // Si es modal, cerrar y navegar a la vista solicitada
-        if (this.isModal) {
-          this.authService.closeLoginModal();
-          // Navegar a kitchen por defecto después del login
-          this.router.navigate(['/kitchen']);
-        }
+        this.errorMessage = 'Correo o contraseña incorrectos';
+      } else if (this.isModal) {
+        this.authService.closeLoginModal();
       }
-
+    } catch {
+      this.errorMessage = 'Correo o contraseña incorrectos';
+    } finally {
       this.isLoading = false;
-    }, 1000);
+    }
   }
 
   togglePasswordVisibility() {

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Bell, Filter, Volume2, VolumeX } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
-import { WebSocketService } from '../../services/websocket.service';
+import { FirebaseService } from '../../services/firebase.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderCardComponent } from '../order-card/order-card.component';
 import { KitchenStatsComponent } from '../kitchen-stats/kitchen-stats.component';
@@ -50,7 +50,7 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
 
   constructor(
     private appService: AppService,
-    private webSocketService: WebSocketService,
+    private firebaseService: FirebaseService,
     private notificationService: NotificationService
   ) {}
 
@@ -78,9 +78,9 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Suscribirse al estado de conexión WebSocket
+    // Suscribirse al estado de conexión Firebase
     this.subscriptions.push(
-      this.webSocketService.connectionStatus$.subscribe(status => {
+      this.firebaseService.connected$.subscribe(status => {
         this.isConnected = status;
       })
     );

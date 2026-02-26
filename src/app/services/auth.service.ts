@@ -1,79 +1,69 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { getApps, initializeApp, getApp } from 'firebase/app';
+import {
+  getAuth,
+  Auth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  getIdTokenResult
+} from 'firebase/auth';
 import { User, AuthState } from '../models/types';
+import { firebaseConfig } from '../config/firebase.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private authStateSubject = new BehaviorSubject<AuthState>(this.getStoredAuthState());
+  private auth: Auth;
+  private authStateSubject = new BehaviorSubject<AuthState>({ isAuthenticated: false, user: null });
   private showLoginModalSubject = new BehaviorSubject<boolean>(false);
 
   authState$ = this.authStateSubject.asObservable();
   showLoginModal$ = this.showLoginModalSubject.asObservable();
 
-  // Usuarios predefinidos para demo
-  private users: User[] = [
-    {
-      id: '1',
-      username: 'admin',
-      password: 'admin123',
-      role: 'admin',
-      name: 'Administrador'
-    },
-    {
-      id: '2',
-      username: 'chef',
-      password: 'chef123',
-      role: 'chef',
-      name: 'Chef Principal'
-    }
-  ];
+  constructor() {
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    this.auth = getAuth(app);
 
-  constructor() {}
+    onAuthStateChanged(this.auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const tokenResult = await getIdTokenResult(firebaseUser);
+        const role = (tokenResult.claims['role'] as string) ?? 'waiter';
+        const idToken = tokenResult.token;
 
-  private getStoredAuthState(): AuthState {
-    try {
-      const stored = localStorage.getItem('auth-state');
-      if (stored) {
-        const authState = JSON.parse(stored);
-        return {
-          isAuthenticated: authState.isAuthenticated || false,
-          user: authState.user || null
+        const user: User = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email ?? '',
+          name: firebaseUser.displayName ?? firebaseUser.email ?? '',
+          role: role as User['role']
         };
+
+        this.authStateSubject.next({ isAuthenticated: true, user, idToken });
+      } else {
+        this.authStateSubject.next({ isAuthenticated: false, user: null, idToken: null });
       }
-    } catch (error) {
-      console.error('Error loading auth state:', error);
-    }
-    return { isAuthenticated: false, user: null };
+    });
   }
 
-  private updateAuthState(authState: AuthState) {
-    localStorage.setItem('auth-state', JSON.stringify(authState));
-    this.authStateSubject.next(authState);
-  }
-
-  login(username: string, password: string): boolean {
-    const user = this.users.find(u => u.username === username && u.password === password);
-    
-    if (user) {
-      const authState: AuthState = {
-        isAuthenticated: true,
-        user: { ...user, password: '' } // No almacenar la contraseña
-      };
-      this.updateAuthState(authState);
+  async login(email: string, password: string): Promise<boolean> {
+    try {
+      await signInWithEmailAndPassword(this.auth, email, password);
       return true;
+    } catch {
+      return false;
     }
-    
-    return false;
   }
 
-  logout() {
-    const authState: AuthState = {
-      isAuthenticated: false,
-      user: null
-    };
-    this.updateAuthState(authState);
+  async logout(): Promise<void> {
+    await signOut(this.auth);
+  }
+
+  async getIdToken(): Promise<string | null> {
+    const user = this.auth.currentUser;
+    if (!user) return null;
+    return user.getIdToken();
   }
 
   isAuthenticated(): boolean {
@@ -84,18 +74,22 @@ export class AuthService {
     return this.authStateSubject.value.user;
   }
 
-  hasRole(role: 'admin' | 'chef'): boolean {
+  hasRole(role: 'admin' | 'chef' | 'waiter'): boolean {
     const user = this.getCurrentUser();
     if (!user || !this.isAuthenticated()) return false;
-    
+
     if (role === 'admin') {
       return user.role === 'admin';
     }
-    
+
     if (role === 'chef') {
       return user.role === 'admin' || user.role === 'chef';
     }
-    
+
+    if (role === 'waiter') {
+      return user.role === 'admin' || user.role === 'chef' || user.role === 'waiter';
+    }
+
     return false;
   }
 

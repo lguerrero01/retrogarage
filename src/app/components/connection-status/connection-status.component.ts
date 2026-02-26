@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Wifi, WifiOff, RefreshCw } from 'lucide-angular';
-import { WebSocketService } from '../../services/websocket.service';
+import { FirebaseService } from '../../services/firebase.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -21,10 +21,10 @@ export class ConnectionStatusComponent implements OnInit, OnDestroy {
 
   private subscription?: Subscription;
 
-  constructor(private webSocketService: WebSocketService) {}
+  constructor(private firebaseService: FirebaseService) {}
 
   ngOnInit() {
-    this.subscription = this.webSocketService.connectionStatus$.subscribe(status => {
+    this.subscription = this.firebaseService.connected$.subscribe(status => {
       this.isConnected = status;
       if (status) {
         this.isReconnecting = false;
@@ -40,14 +40,7 @@ export class ConnectionStatusComponent implements OnInit, OnDestroy {
 
   reconnect() {
     this.isReconnecting = true;
-    this.webSocketService.reconnect();
-    
-    // Reset reconnecting state after 5 seconds if still not connected
-    setTimeout(() => {
-      if (!this.isConnected) {
-        this.isReconnecting = false;
-      }
-    }, 5000);
+    window.location.reload();
   }
 
   getStatusIcon() {
@@ -55,7 +48,7 @@ export class ConnectionStatusComponent implements OnInit, OnDestroy {
   }
 
   getStatusClass(): string {
-    return this.isConnected 
+    return this.isConnected
       ? 'bg-green-500/20 text-green-300'
       : 'bg-red-500/20 text-red-300';
   }
@@ -64,6 +57,6 @@ export class ConnectionStatusComponent implements OnInit, OnDestroy {
     if (this.isReconnecting) {
       return 'Reconectando...';
     }
-    return this.isConnected ? 'Conectado' : 'Desconectado';
+    return this.isConnected ? 'Firebase conectado' : 'Firebase desconectado';
   }
 }

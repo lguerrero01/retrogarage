@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { LucideAngularModule, FileText, Printer, Calendar, TrendingUp, DollarSign } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
 import { BillingService } from '../../services/billing.service';
+import { OrderApiService } from '../../services/order-api.service';
 import { Order, DailySummary } from '../../models/types';
+import { apiOrderToOrder } from '../../models/adapters';
 
 @Component({
   selector: 'app-daily-summary',
@@ -19,20 +21,39 @@ export class DailySummaryComponent implements OnInit {
   TrendingUp = TrendingUp;
   DollarSign = DollarSign;
 
-  orders: Order[] = [];
+  activeOrders: Order[] = [];
+  archivedOrders: Order[] = [];
   dailySummary: DailySummary | null = null;
   selectedDate = new Date();
+  isLoadingHistory = false;
 
   constructor(
     private appService: AppService,
-    private billingService: BillingService
+    private billingService: BillingService,
+    private orderApiService: OrderApiService
   ) {}
 
   ngOnInit() {
     this.appService.orders$.subscribe(orders => {
-      this.orders = orders;
+      this.activeOrders = orders;
       this.generateSummary();
     });
+    this.loadArchivedOrders();
+  }
+
+  private loadArchivedOrders() {
+    this.isLoadingHistory = true;
+    this.orderApiService.getArchivedOrders()
+      .then(apiOrders => {
+        this.archivedOrders = apiOrders.map(o => apiOrderToOrder(o));
+        this.generateSummary();
+      })
+      .catch(() => {
+        // Continuar solo con órdenes activas si falla el historial
+      })
+      .finally(() => {
+        this.isLoadingHistory = false;
+      });
   }
 
   selectDate() {
@@ -41,18 +62,20 @@ export class DailySummaryComponent implements OnInit {
       const newDate = new Date(dateInput);
       if (!isNaN(newDate.getTime())) {
         this.selectedDate = newDate;
-        this.generateSummary();
+        this.loadArchivedOrders();
       }
     }
   }
 
   generateSummary() {
-    this.dailySummary = this.billingService.generateDailySummary(this.orders, this.selectedDate);
+    const allOrders = [...this.activeOrders, ...this.archivedOrders];
+    this.dailySummary = this.billingService.generateDailySummary(allOrders, this.selectedDate);
   }
 
   printSummary() {
     if (this.dailySummary) {
-      this.billingService.printDailySummary(this.dailySummary, this.orders);
+      const allOrders = [...this.activeOrders, ...this.archivedOrders];
+      this.billingService.printDailySummary(this.dailySummary, allOrders);
     }
   }
 

@@ -29,6 +29,8 @@ export class FirebaseService {
   private db: Firestore;
   private activeSubscriptions = new Map<string, Unsubscribe>();
   private collectionSubjects = new Map<string, BehaviorSubject<FirestoreCollectionUpdate>>();
+  private connectedSubject = new BehaviorSubject<boolean>(false);
+  connected$ = this.connectedSubject.asObservable();
 
   constructor() {
     // Initialize Firebase with environment config
@@ -73,6 +75,7 @@ export class FirebaseService {
           ...doc.data()
         })) as T[];
 
+        if (!this.connectedSubject.value) this.connectedSubject.next(true);
         subject.next({ data });
       },
       (error: FirestoreError) => {

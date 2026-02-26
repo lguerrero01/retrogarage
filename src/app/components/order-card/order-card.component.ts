@@ -38,6 +38,8 @@ export class OrderCardComponent {
         return 'bg-[#8624ce] text-white';
       case 'completed':
         return 'bg-green-500 text-white';
+      case 'cancelled':
+        return 'bg-red-500 text-white';
       default:
         return 'bg-gray-500 text-white';
     }
@@ -53,6 +55,8 @@ export class OrderCardComponent {
         return 'Listo';
       case 'completed':
         return 'Completado';
+      case 'cancelled':
+        return 'Cancelado';
       default:
         return status;
     }
@@ -72,7 +76,7 @@ export class OrderCardComponent {
   }
 
   canAdvanceStatus(status: Order['status']): boolean {
-    return status !== 'completed';
+    return status !== 'completed' && status !== 'cancelled';
   }
 
   getButtonText(status: Order['status']): string {
