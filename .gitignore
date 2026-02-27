@@ -25,3 +25,6 @@ dist-ssr
 .env
 .angular/
 .angular/*
+
+# Firebase configuration with credentials
+src/app/config/firebase.config.ts
