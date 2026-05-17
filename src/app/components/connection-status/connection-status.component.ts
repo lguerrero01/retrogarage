@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Wifi, WifiOff, RefreshCw } from 'lucide-angular';
-import { FirebaseService } from '../../services/firebase.service';
+import { SupabaseRealtimeService } from '../../services/supabase-realtime.service';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -21,10 +21,10 @@ export class ConnectionStatusComponent implements OnInit, OnDestroy {
 
   private subscription?: Subscription;
 
-  constructor(private firebaseService: FirebaseService) {}
+  constructor(private realtimeService: SupabaseRealtimeService) {}
 
   ngOnInit() {
-    this.subscription = this.firebaseService.connected$.subscribe(status => {
+    this.subscription = this.realtimeService.connected$.subscribe(status => {
       this.isConnected = status;
       if (status) {
         this.isReconnecting = false;
@@ -57,6 +57,6 @@ export class ConnectionStatusComponent implements OnInit, OnDestroy {
     if (this.isReconnecting) {
       return 'Reconectando...';
     }
-    return this.isConnected ? 'Firebase conectado' : 'Firebase desconectado';
+    return this.isConnected ? 'Supabase conectado' : 'Supabase desconectado';
   }
 }

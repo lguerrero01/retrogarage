@@ -3,19 +3,48 @@ import { BehaviorSubject } from 'rxjs';
 import { CartItem, Order, Customer, MenuItem } from '../models/types';
 import { menuItems as defaultMenuItems } from '../data/menu-items';
 import { NotificationService } from './notification.service';
-import { FirebaseService } from './firebase.service';
+import { SupabaseRealtimeService } from './supabase-realtime.service';
 import { AuthService } from './auth.service';
-import { ProductApiService } from './product-api.service';
-import { OrderApiService } from './order-api.service';
-import {
-  apiProductToMenuItem,
-  apiOrderToOrder,
-  cartToCreateOrderRequest,
-  frontendStatusToApi,
-  menuItemToCreateApiProduct,
-  menuItemUpdatesToApi
-} from '../models/adapters';
-import { ApiOrder } from '../models/api.types';
+import { ProductSupabaseService } from './product-supabase.service';
+import { OrderSupabaseService } from './order-supabase.service';
+import { dbOrderToOrder } from './order-supabase.service';
+
+interface DbOrder {
+  id: string;
+  waiter_id: string | null;
+  table_number: number;
+  items: CartItem[];
+  total: number;
+  status: Order['status'];
+  customer_preferences: { name?: string; phone?: string; notes?: string } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DbProduct {
+  id: string;
+  name: string;
+  description: string;
+  ingredients: string[];
+  price: number;
+  images: string[];
+  is_available: boolean;
+  category: string;
+}
+
+function dbProductToMenuItem(p: DbProduct): MenuItem {
+  return {
+    id: p.id,
+    name: p.name,
+    description: p.description ?? '',
+    price: p.price,
+    category: p.category ?? '',
+    image: p.images?.[0] ?? '',
+    available: p.is_available ?? true,
+    customizable: (p.ingredients?.length ?? 0) > 0,
+    ingredients: p.ingredients ?? []
+  };
+}
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +53,6 @@ export class AppService {
   private cartSubject = new BehaviorSubject<CartItem[]>(this.getStoredCart());
   private ordersSubject = new BehaviorSubject<Order[]>(this.getStoredOrders());
   private menuItemsSubject = new BehaviorSubject<MenuItem[]>(this.getStoredMenuItems());
-  private productCategories: Record<string, string> = this.loadCategoryMap();
 
   cart$ = this.cartSubject.asObservable();
   orders$ = this.ordersSubject.asObservable();
@@ -32,115 +60,44 @@ export class AppService {
 
   constructor(
     private notificationService: NotificationService,
-    private firebaseService: FirebaseService,
+    private realtimeService: SupabaseRealtimeService,
     private authService: AuthService,
-    private productApiService: ProductApiService,
-    private orderApiService: OrderApiService
+    private productService: ProductSupabaseService,
+    private orderService: OrderSupabaseService
   ) {
-    this.initializeFirestoreListener();
-    this.loadProductsFromApi();
+    this.initRealtimeListeners();
   }
 
-  private initializeFirestoreListener() {
-    this.firebaseService.listenToCollection<ApiOrder>('pedidos_activos')
-      .subscribe({
-        next: (update) => {
-          if (update.error) {
-            console.error('Error listening to pedidos_activos:', update.error);
-            return;
-          }
+  private initRealtimeListeners() {
+    this.realtimeService.listenToTable<DbOrder>('orders', (rows) => {
+      const orders = rows.map(dbOrderToOrder);
+      this.ordersSubject.next(orders);
+      localStorage.setItem('restaurant-orders', JSON.stringify(orders));
+    });
 
-          const menuMap = new Map(this.menuItemsSubject.value.map(m => [m.id, m]));
-          const orders = update.data.map(o => {
-            const order = apiOrderToOrder(o);
-            order.items = order.items.map(item => ({
-              ...item,
-              category: menuMap.get(item.id)?.category || item.category || 'Sin categoría'
-            }));
-            return order;
-          });
-          this.ordersSubject.next(orders);
-          localStorage.setItem('restaurant-orders', JSON.stringify(orders));
-        },
-        error: (err) => {
-          console.error('Subscription error:', err);
-        }
-      });
-  }
-
-  private loadProductsFromApi() {
-    this.productApiService.getProducts()
-      .then(ps => {
-        const items = this.applyCategoryMap(ps.map(apiProductToMenuItem));
-        this.menuItemsSubject.next(items);
-        localStorage.setItem('restaurant-menu-items', JSON.stringify(items));
-        console.log('Products loaded from API');
-      })
-      .catch(() => {
-        // Fallback: keep items already loaded from localStorage
-      });
-
-    // Real-time sync after mutations
-    this.firebaseService.listenToCollection<any>('products')
-      .subscribe({
-        next: (update) => {
-          if (update.error || !update.data.length) return;
-          const items = this.applyCategoryMap(update.data.map(apiProductToMenuItem));
-          this.menuItemsSubject.next(items);
-          localStorage.setItem('restaurant-menu-items', JSON.stringify(items));
-        },
-        error: (err) => console.error('Products listener error:', err)
-      });
-  }
-
-  private loadCategoryMap(): Record<string, string> {
-    try {
-      return JSON.parse(localStorage.getItem('product-categories') ?? '{}');
-    } catch {
-      return {};
-    }
-  }
-
-  private saveCategoryMap() {
-    localStorage.setItem('product-categories', JSON.stringify(this.productCategories));
-  }
-
-  private applyCategoryMap(items: MenuItem[]): MenuItem[] {
-    return items.map(item => ({
-      ...item,
-      category: item.category || this.productCategories[item.id] || ''
-    }));
+    this.realtimeService.listenToTable<DbProduct>('products', (rows) => {
+      const items = rows.map(dbProductToMenuItem);
+      this.menuItemsSubject.next(items);
+      localStorage.setItem('restaurant-menu-items', JSON.stringify(items));
+    });
   }
 
   private getStoredCart(): CartItem[] {
-    try {
-      const stored = localStorage.getItem('restaurant-cart');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem('restaurant-cart') ?? '[]'); } catch { return []; }
   }
 
   private getStoredOrders(): Order[] {
     try {
-      const stored = localStorage.getItem('restaurant-orders');
-      const orders = stored ? JSON.parse(stored) : [];
-      return orders.map((order: any) => ({
-        ...order,
-        timestamp: new Date(order.timestamp)
-      }));
-    } catch {
-      return [];
-    }
+      const orders = JSON.parse(localStorage.getItem('restaurant-orders') ?? '[]');
+      return orders.map((o: any) => ({ ...o, timestamp: new Date(o.timestamp) }));
+    } catch { return []; }
   }
 
   private getStoredMenuItems(): MenuItem[] {
     try {
       const stored = localStorage.getItem('restaurant-menu-items');
       return stored ? JSON.parse(stored) : defaultMenuItems;
-    } catch {
-      return defaultMenuItems;
-    }
+    } catch { return defaultMenuItems; }
   }
 
   private updateCartStorage(cart: CartItem[]) {
@@ -150,36 +107,27 @@ export class AppService {
 
   addToCart(item: CartItem) {
     const currentCart = this.cartSubject.value;
-    const existingItemIndex = currentCart.findIndex(cartItem =>
-      cartItem.id === item.id &&
-      JSON.stringify(cartItem.selectedIngredients) === JSON.stringify(item.selectedIngredients) &&
-      JSON.stringify(cartItem.removedIngredients) === JSON.stringify(item.removedIngredients)
+    const idx = currentCart.findIndex(c =>
+      c.id === item.id &&
+      JSON.stringify(c.selectedIngredients) === JSON.stringify(item.selectedIngredients) &&
+      JSON.stringify(c.removedIngredients) === JSON.stringify(item.removedIngredients)
     );
-
-    if (existingItemIndex !== -1) {
-      const updatedCart = [...currentCart];
-      updatedCart[existingItemIndex].quantity += item.quantity;
-      this.updateCartStorage(updatedCart);
+    if (idx !== -1) {
+      const updated = [...currentCart];
+      updated[idx].quantity += item.quantity;
+      this.updateCartStorage(updated);
     } else {
       this.updateCartStorage([...currentCart, item]);
     }
   }
 
   removeFromCart(itemId: string) {
-    const updatedCart = this.cartSubject.value.filter(item => item.id !== itemId);
-    this.updateCartStorage(updatedCart);
+    this.updateCartStorage(this.cartSubject.value.filter(i => i.id !== itemId));
   }
 
   updateCartItemQuantity(itemId: string, quantity: number) {
-    if (quantity <= 0) {
-      this.removeFromCart(itemId);
-      return;
-    }
-
-    const updatedCart = this.cartSubject.value.map(item =>
-      item.id === itemId ? { ...item, quantity } : item
-    );
-    this.updateCartStorage(updatedCart);
+    if (quantity <= 0) { this.removeFromCart(itemId); return; }
+    this.updateCartStorage(this.cartSubject.value.map(i => i.id === itemId ? { ...i, quantity } : i));
   }
 
   clearCart() {
@@ -189,84 +137,51 @@ export class AppService {
   createOrder(customer: Customer) {
     const items = this.cartSubject.value;
     if (!items.length) return;
-
-    const waiterId = this.authService.getCurrentUser()?.id ?? 'anonymous';
-    const request = cartToCreateOrderRequest(items, customer, waiterId);
-
-    this.orderApiService.createOrder(request)
-      .then(apiOrder => {
+    const waiterId = this.authService.getCurrentUser()?.id ?? '';
+    this.orderService.createOrder(items, customer, waiterId)
+      .then(order => {
         this.clearCart();
-        this.notificationService.notifyNewOrder(apiOrder.id, customer.name);
+        this.notificationService.notifyNewOrder(order.id, customer.name);
       })
       .catch(err => console.error('Error creating order:', err));
   }
 
   updateOrderStatus(orderId: string, status: Order['status']) {
-    const apiStatus = frontendStatusToApi(status);
-
-    this.orderApiService.updateStatus(orderId, apiStatus)
+    this.orderService.updateStatus(orderId, status)
       .then(() => {
         if (status === 'completed') {
-          this.orderApiService.archiveOrder(orderId).catch(console.error);
+          const order = this.ordersSubject.value.find(o => o.id === orderId);
+          if (order) this.orderService.archiveOrder({ ...order, status }).catch(console.error);
         }
       })
-      .catch(err => console.error('Error updating order status:', err));
+      .catch(err => console.error('Error updating status:', err));
 
-    // Optimistic update — Firestore listener will sync after
-    const updated = this.ordersSubject.value.map(o =>
-      o.id === orderId ? { ...o, status } : o
-    );
+    const updated = this.ordersSubject.value.map(o => o.id === orderId ? { ...o, status } : o);
     this.ordersSubject.next(updated);
     this.notificationService.notifyOrderStatusUpdate(orderId, status);
   }
 
-  // Menu Management Methods
   addMenuItem(item: MenuItem) {
-    const data = menuItemToCreateApiProduct(item);
-    this.productApiService.createProduct(data)
-      .then(apiProduct => {
-        if (item.category) {
-          this.productCategories[apiProduct.id] = item.category;
-          this.saveCategoryMap();
-        }
-      })
-      .catch(err => console.error('Error creating product:', err));
+    this.productService.create(item).catch(err => console.error('Error creating product:', err));
   }
 
   updateMenuItem(itemId: string, updates: Partial<MenuItem>) {
-    if (updates.category !== undefined) {
-      this.productCategories[itemId] = updates.category;
-      this.saveCategoryMap();
-    }
-    const data = menuItemUpdatesToApi(updates);
-    this.productApiService.updateProduct(itemId, data)
-      .catch(err => console.error('Error updating product:', err));
+    this.productService.update(itemId, updates).catch(err => console.error('Error updating product:', err));
   }
 
   deleteMenuItem(itemId: string) {
-    delete this.productCategories[itemId];
-    this.saveCategoryMap();
-    this.productApiService.deleteProduct(itemId)
-      .catch(err => console.error('Error deleting product:', err));
+    this.productService.delete(itemId).catch(err => console.error('Error deleting product:', err));
   }
 
   getCartTotal(): number {
-    return this.cartSubject.value.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return this.cartSubject.value.reduce((t, i) => t + i.price * i.quantity, 0);
   }
 
   getCartItemCount(): number {
-    return this.cartSubject.value.reduce((count, item) => count + item.quantity, 0);
+    return this.cartSubject.value.reduce((c, i) => c + i.quantity, 0);
   }
 
-  getCurrentCart(): CartItem[] {
-    return this.cartSubject.value;
-  }
-
-  getCurrentOrders(): Order[] {
-    return this.ordersSubject.value;
-  }
-
-  getCurrentMenuItems(): MenuItem[] {
-    return this.menuItemsSubject.value;
-  }
+  getCurrentCart(): CartItem[] { return this.cartSubject.value; }
+  getCurrentOrders(): Order[] { return this.ordersSubject.value; }
+  getCurrentMenuItems(): MenuItem[] { return this.menuItemsSubject.value; }
 }

@@ -1,22 +1,12 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { getApps, initializeApp, getApp } from 'firebase/app';
-import {
-  getAuth,
-  Auth,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  getIdTokenResult
-} from 'firebase/auth';
+import { supabase } from '../config/supabase.client';
 import { User, AuthState } from '../models/types';
-import { firebaseConfig } from '../config/firebase.config';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private auth: Auth;
   private authStateSubject = new BehaviorSubject<AuthState>({ isAuthenticated: false, user: null });
   private showLoginModalSubject = new BehaviorSubject<boolean>(false);
 
@@ -24,46 +14,48 @@ export class AuthService {
   showLoginModal$ = this.showLoginModalSubject.asObservable();
 
   constructor() {
-    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    this.auth = getAuth(app);
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) this.loadProfile(data.session.user.id, data.session.access_token);
+    });
 
-    onAuthStateChanged(this.auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const tokenResult = await getIdTokenResult(firebaseUser);
-        const role = (tokenResult.claims['role'] as string) ?? 'waiter';
-        const idToken = tokenResult.token;
-
-        const user: User = {
-          id: firebaseUser.uid,
-          email: firebaseUser.email ?? '',
-          name: firebaseUser.displayName ?? firebaseUser.email ?? '',
-          role: role as User['role']
-        };
-
-        this.authStateSubject.next({ isAuthenticated: true, user, idToken });
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        await this.loadProfile(session.user.id, session.access_token);
       } else {
         this.authStateSubject.next({ isAuthenticated: false, user: null, idToken: null });
       }
     });
   }
 
+  private async loadProfile(userId: string, idToken: string): Promise<void> {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, name')
+      .eq('id', userId)
+      .single();
+
+    const { data: authUser } = await supabase.auth.getUser();
+    const user: User = {
+      id: userId,
+      email: authUser.user?.email ?? '',
+      name: profile?.name ?? authUser.user?.email ?? '',
+      role: (profile?.role ?? 'waiter') as User['role']
+    };
+    this.authStateSubject.next({ isAuthenticated: true, user, idToken });
+  }
+
   async login(email: string, password: string): Promise<boolean> {
-    try {
-      await signInWithEmailAndPassword(this.auth, email, password);
-      return true;
-    } catch {
-      return false;
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return !error;
   }
 
   async logout(): Promise<void> {
-    await signOut(this.auth);
+    await supabase.auth.signOut();
   }
 
   async getIdToken(): Promise<string | null> {
-    const user = this.auth.currentUser;
-    if (!user) return null;
-    return user.getIdToken();
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
   }
 
   isAuthenticated(): boolean {
@@ -77,20 +69,9 @@ export class AuthService {
   hasRole(role: 'admin' | 'chef' | 'waiter'): boolean {
     const user = this.getCurrentUser();
     if (!user || !this.isAuthenticated()) return false;
-
-    if (role === 'admin') {
-      return user.role === 'admin';
-    }
-
-    if (role === 'chef') {
-      return user.role === 'admin' || user.role === 'chef';
-    }
-
-    if (role === 'waiter') {
-      return user.role === 'admin' || user.role === 'chef' || user.role === 'waiter';
-    }
-
-    return false;
+    if (role === 'admin') return user.role === 'admin';
+    if (role === 'chef') return user.role === 'admin' || user.role === 'chef';
+    return true;
   }
 
   canAccessKitchen(): boolean {

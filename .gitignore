@@ -28,3 +28,10 @@ dist-ssr
 
 # Firebase configuration with credentials
 src/app/config/firebase.config.ts
+
+# Environment files with credentials
+src/environments/environment.ts
+src/environments/environment.development.ts
+
+# Claude Code local settings
+.claude/settings.local.json

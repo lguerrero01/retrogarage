@@ -3,9 +3,8 @@ import { CommonModule } from '@angular/common';
 import { LucideAngularModule, FileText, Printer, Calendar, TrendingUp, DollarSign } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
 import { BillingService } from '../../services/billing.service';
-import { OrderApiService } from '../../services/order-api.service';
+import { OrderSupabaseService } from '../../services/order-supabase.service';
 import { Order, DailySummary } from '../../models/types';
-import { apiOrderToOrder } from '../../models/adapters';
 
 @Component({
   selector: 'app-daily-summary',
@@ -30,7 +29,7 @@ export class DailySummaryComponent implements OnInit {
   constructor(
     private appService: AppService,
     private billingService: BillingService,
-    private orderApiService: OrderApiService
+    private orderService: OrderSupabaseService
   ) {}
 
   ngOnInit() {
@@ -43,9 +42,9 @@ export class DailySummaryComponent implements OnInit {
 
   private loadArchivedOrders() {
     this.isLoadingHistory = true;
-    this.orderApiService.getArchivedOrders()
-      .then(apiOrders => {
-        this.archivedOrders = apiOrders.map(o => apiOrderToOrder(o));
+    this.orderService.getArchivedOrders()
+      .then(orders => {
+        this.archivedOrders = orders;
         this.generateSummary();
       })
       .catch(() => {

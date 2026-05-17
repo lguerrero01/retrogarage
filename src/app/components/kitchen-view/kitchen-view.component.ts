@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Bell, Filter, Volume2, VolumeX } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
-import { FirebaseService } from '../../services/firebase.service';
+import { SupabaseRealtimeService } from '../../services/supabase-realtime.service';
 import { NotificationService } from '../../services/notification.service';
 import { OrderCardComponent } from '../order-card/order-card.component';
 import { KitchenStatsComponent } from '../kitchen-stats/kitchen-stats.component';
@@ -50,7 +50,7 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
 
   constructor(
     private appService: AppService,
-    private firebaseService: FirebaseService,
+    private realtimeService: SupabaseRealtimeService,
     private notificationService: NotificationService
   ) {}
 
@@ -78,9 +78,8 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Suscribirse al estado de conexión Firebase
     this.subscriptions.push(
-      this.firebaseService.connected$.subscribe(status => {
+      this.realtimeService.connected$.subscribe(status => {
         this.isConnected = status;
       })
     );
