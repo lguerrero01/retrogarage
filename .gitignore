@@ -36,10 +36,8 @@ src/environments/environment.development.ts
 # Claude Code local settings
 .claude/settings.local.json
 
-# Capacitor Android - build artifacts (keep source, ignore generated)
-android/.gradle/
-android/app/build/
-android/build/
+# Capacitor Android
+android/
 
 # Playwright MCP screenshots and snapshots
 .playwright-mcp/
