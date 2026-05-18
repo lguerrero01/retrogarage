@@ -2,6 +2,11 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { supabase } from '../config/supabase.client';
 
+export interface StatItem {
+  num: string;
+  label: string;
+}
+
 export interface RestaurantConfig {
   id: string;
   name: string;
@@ -14,11 +19,19 @@ export interface RestaurantConfig {
   logo_image: string;
   about_image: string;
   gallery_images: string[];
+  stats: StatItem[];
   playstore_url: string;
   instagram_url: string;
   facebook_url: string;
   updated_at: string;
 }
+
+const DEFAULT_STATS: StatItem[] = [
+  { num: '100+', label: 'Platillos únicos' },
+  { num: '5★',   label: 'Calificación' },
+  { num: 'Retro', label: 'Ambiente temático' },
+  { num: 'App',   label: 'Ordena desde tu mesa' }
+];
 
 const DEFAULT_CONFIG: RestaurantConfig = {
   id: 'main',
@@ -32,6 +45,7 @@ const DEFAULT_CONFIG: RestaurantConfig = {
   logo_image: '',
   about_image: '',
   gallery_images: [],
+  stats: DEFAULT_STATS,
   playstore_url: '',
   instagram_url: '',
   facebook_url: '',

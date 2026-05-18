@@ -6,7 +6,7 @@ import {
   Clock, Star, Instagram, Facebook, Smartphone, Trash2, Plus,
   Save, ChevronLeft, ChevronRight, ExternalLink, Info, Camera
 } from 'lucide-angular';
-import { RestaurantConfigService, RestaurantConfig } from '../../services/restaurant-config.service';
+import { RestaurantConfigService, RestaurantConfig, StatItem } from '../../services/restaurant-config.service';
 import { ToastService } from '../../services/toast.service';
 import { Subscription } from 'rxjs';
 
@@ -82,6 +82,33 @@ type Tab = 'info' | 'images' | 'social';
           <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Dirección</label>
           <input type="text" [(ngModel)]="form.address" placeholder="Av. Principal #123, Ciudad"
             class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+        </div>
+
+        <!-- Stats -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide">Estadísticas (banda de color)</label>
+            <button *ngIf="(form.stats?.length ?? 0) < 6" (click)="addStat()"
+              class="flex items-center gap-1 text-xs font-semibold text-[#2a23b8] hover:text-[#2a23b8]/80 transition-colors">
+              <lucide-icon [img]="Plus" class="h-3.5 w-3.5"></lucide-icon> Agregar
+            </button>
+          </div>
+          <p class="text-xs text-gray-400 mb-3">Se muestran en la franja de colores debajo del hero. Máximo 6.</p>
+          <div class="space-y-2">
+            <div *ngFor="let stat of form.stats; let i = index"
+                 class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+              <input type="text" [(ngModel)]="stat.num"
+                placeholder="100+" maxlength="8"
+                class="w-20 bg-transparent text-sm font-bold text-gray-800 outline-none border-b border-gray-300 focus:border-[#2a23b8] pb-0.5">
+              <span class="text-gray-300">|</span>
+              <input type="text" [(ngModel)]="stat.label"
+                placeholder="Descripción"
+                class="flex-1 bg-transparent text-sm text-gray-600 outline-none border-b border-gray-300 focus:border-[#2a23b8] pb-0.5">
+              <button (click)="removeStat(i)" class="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0">
+                <lucide-icon [img]="Trash2" class="h-4 w-4"></lucide-icon>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -284,6 +311,7 @@ export class LandingConfigComponent implements OnInit, OnDestroy {
         logo_image: c.logo_image,
         about_image: c.about_image,
         gallery_images: [...(c.gallery_images ?? [])],
+        stats: (c.stats ?? []).map(s => ({ ...s })),
         playstore_url: c.playstore_url,
         instagram_url: c.instagram_url,
         facebook_url: c.facebook_url
@@ -335,6 +363,14 @@ export class LandingConfigComponent implements OnInit, OnDestroy {
 
   removeGallery(index: number) {
     this.form.gallery_images = (this.form.gallery_images ?? []).filter((_, i) => i !== index);
+  }
+
+  addStat() {
+    this.form.stats = [...(this.form.stats ?? []), { num: '', label: '' }];
+  }
+
+  removeStat(index: number) {
+    this.form.stats = (this.form.stats ?? []).filter((_, i) => i !== index);
   }
 
   async save() {
