@@ -1,8 +1,17 @@
 <!-- Main Application -->
 <div class="min-h-screen bg-gray-50">
   <app-header></app-header>
-  <router-outlet></router-outlet>
+  <div class="page-with-bottom-nav">
+    <router-outlet></router-outlet>
+  </div>
+  <app-bottom-nav></app-bottom-nav>
 </div>
 
 <!-- Login Modal -->
 <app-login *ngIf="showLoginModal"></app-login>
+
+<!-- Toast Notifications -->
+<app-toast></app-toast>
+
+<!-- Confirm Dialog -->
+<app-confirm-modal></app-confirm-modal>

@@ -11,33 +11,47 @@
   </div>
 
   <div class="p-6">
-    <div class="space-y-4 mb-6">
-      <div *ngFor="let item of cart" class="flex items-center space-x-4 bg-gray-50 rounded-lg p-4">
-        <img
+    <div class="space-y-3 mb-6">
+      <div *ngFor="let item of cart"
+           class="flex items-center gap-3 bg-gray-50 rounded-xl p-3 animate-fadeInUp">
+        <!-- Imagen -->
+        <img *ngIf="item.image"
           [src]="item.image"
           [alt]="item.name"
-          class="w-16 h-16 object-cover rounded-lg"
+          class="w-12 h-12 sm:w-14 sm:h-14 object-cover rounded-lg flex-shrink-0"
         />
-        <div class="flex-1">
-          <h4 class="font-semibold text-gray-800">{{item.name}}</h4>
-          <p class="text-[#ed450d] font-bold">${{item.price.toFixed(2)}}</p>
+        <div *ngIf="!item.image"
+             class="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-gray-200 flex-shrink-0 flex items-center justify-center text-gray-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
         </div>
-        <div class="flex items-center space-x-2">
+
+        <!-- Nombre + precio -->
+        <div class="flex-1 min-w-0">
+          <h4 class="font-semibold text-gray-800 text-sm leading-tight truncate">{{item.name}}</h4>
+          <p class="text-[#ed450d] font-bold text-sm">${{(item.price * item.quantity).toFixed(2)}}</p>
+          <p class="text-gray-400 text-xs">${{item.price.toFixed(2)}} c/u</p>
+        </div>
+
+        <!-- Controles cantidad -->
+        <div class="flex items-center gap-1 flex-shrink-0">
           <button
             (click)="updateQuantity(item.id, item.quantity - 1)"
-            class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors">
-            <lucide-icon [img]="Minus" class="h-4 w-4"></lucide-icon>
+            class="w-7 h-7 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors press-effect">
+            <lucide-icon [img]="Minus" class="h-3 w-3"></lucide-icon>
           </button>
-          <span class="font-medium w-8 text-center">{{item.quantity}}</span>
+          <span class="font-bold text-sm w-6 text-center">{{item.quantity}}</span>
           <button
             (click)="updateQuantity(item.id, item.quantity + 1)"
-            class="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors">
-            <lucide-icon [img]="Plus" class="h-4 w-4"></lucide-icon>
+            class="w-7 h-7 rounded-full bg-[#2a23b8] hover:bg-[#2a23b8]/90 text-white flex items-center justify-center transition-colors press-effect">
+            <lucide-icon [img]="Plus" class="h-3 w-3"></lucide-icon>
           </button>
           <button
             (click)="removeItem(item.id)"
-            class="w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 text-red-600 flex items-center justify-center transition-colors ml-2">
-            <lucide-icon [img]="X" class="h-4 w-4"></lucide-icon>
+            class="w-7 h-7 rounded-full bg-red-50 hover:bg-red-100 text-red-500 flex items-center justify-center transition-colors press-effect ml-1">
+            <lucide-icon [img]="X" class="h-3 w-3"></lucide-icon>
           </button>
         </div>
       </div>
@@ -50,11 +64,21 @@
       </div>
     </div>
 
-    <button *ngIf="!showCheckout"
-      (click)="showCheckout = true"
-      class="w-full bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-4 rounded-xl font-bold text-lg transition-colors">
-      Proceder al Pedido
-    </button>
+    <ng-container *ngIf="!showCheckout">
+      <!-- Banner de aviso si no está autenticado -->
+      <div *ngIf="!isAuthenticated"
+           class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-3 text-amber-800 text-sm">
+        <lucide-icon [img]="LogIn" class="h-4 w-4 flex-shrink-0"></lucide-icon>
+        <span>Debes iniciar sesión para realizar tu pedido</span>
+      </div>
+
+      <button
+        (click)="proceedToCheckout()"
+        class="w-full bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-4 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2">
+        <lucide-icon *ngIf="!isAuthenticated" [img]="LogIn" class="h-5 w-5"></lucide-icon>
+        {{ isAuthenticated ? 'Proceder al Pedido' : 'Iniciar sesión para continuar' }}
+      </button>
+    </ng-container>
 
     <form *ngIf="showCheckout" (ngSubmit)="submitOrder()" class="space-y-4">
       <div>
@@ -113,7 +137,7 @@
         </button>
         <button
           type="submit"
-          class="flex-1 bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-3 rounded-lg font-bold transition-colors">
+          class="flex-1 min-w-0 bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-3 px-2 rounded-lg font-bold text-sm sm:text-base transition-colors leading-tight">
           Confirmar Pedido
         </button>
       </div>

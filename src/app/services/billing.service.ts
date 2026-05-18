@@ -71,15 +71,14 @@ export class BillingService {
       cancelled: dayOrders.filter(o => o.status === 'cancelled').length
     };
 
+    const completedOrders = dayOrders.filter(o => o.status === 'completed');
+
     const ordersByCategory: { [category: string]: number } = {};
     const itemStats: { [itemName: string]: { quantity: number; revenue: number } } = {};
 
-    dayOrders.forEach(order => {
+    completedOrders.forEach(order => {
       order.items.forEach(item => {
-        // Count by category
         ordersByCategory[item.category] = (ordersByCategory[item.category] || 0) + item.quantity;
-        
-        // Count items
         if (!itemStats[item.name]) {
           itemStats[item.name] = { quantity: 0, revenue: 0 };
         }
@@ -95,8 +94,8 @@ export class BillingService {
 
     return {
       date: dateStr,
-      totalOrders: dayOrders.length,
-      totalRevenue: dayOrders.reduce((sum, order) => sum + order.total, 0),
+      totalOrders: completedOrders.length,
+      totalRevenue: completedOrders.reduce((sum, order) => sum + order.total, 0),
       ordersByStatus,
       ordersByCategory,
       topItems

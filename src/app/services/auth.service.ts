@@ -13,39 +13,64 @@ export class AuthService {
   authState$ = this.authStateSubject.asObservable();
   showLoginModal$ = this.showLoginModalSubject.asObservable();
 
-  constructor() {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) this.loadProfile(data.session.user.id, data.session.access_token);
-    });
+  // Resuelve cuando el INITIAL_SESSION ya fue procesado (con o sin sesión)
+  private initResolve!: () => void;
+  readonly ready$ = new Promise<void>(resolve => { this.initResolve = resolve; });
+  private initialized = false;
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        await this.loadProfile(session.user.id, session.access_token);
-      } else {
+  constructor() {
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') {
+        if (session) {
+          // setTimeout libera el lock de auth antes de hacer más llamadas a Supabase
+          setTimeout(() => {
+            this.loadProfile(session.user.id, session.user.email ?? '', session.access_token)
+              .then(() => this.resolveInit());
+          }, 0);
+        } else {
+          this.resolveInit();
+        }
+      } else if (session) {
+        setTimeout(() => {
+          this.loadProfile(session.user.id, session.user.email ?? '', session.access_token);
+        }, 0);
+      } else if (event === 'SIGNED_OUT') {
         this.authStateSubject.next({ isAuthenticated: false, user: null, idToken: null });
       }
     });
   }
 
-  private async loadProfile(userId: string, idToken: string): Promise<void> {
+  private resolveInit() {
+    if (!this.initialized) {
+      this.initialized = true;
+      this.initResolve();
+    }
+  }
+
+  private async loadProfile(userId: string, email: string, idToken: string): Promise<void> {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role, name')
       .eq('id', userId)
       .single();
 
-    const { data: authUser } = await supabase.auth.getUser();
     const user: User = {
       id: userId,
-      email: authUser.user?.email ?? '',
-      name: profile?.name ?? authUser.user?.email ?? '',
+      email,
+      name: profile?.name ?? email,
       role: (profile?.role ?? 'waiter') as User['role']
     };
     this.authStateSubject.next({ isAuthenticated: true, user, idToken });
   }
 
   async login(email: string, password: string): Promise<boolean> {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), 12000)
+    );
+    const { error } = await Promise.race([
+      supabase.auth.signInWithPassword({ email, password }),
+      timeout
+    ]);
     return !error;
   }
 

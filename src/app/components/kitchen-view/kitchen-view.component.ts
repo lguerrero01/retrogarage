@@ -7,8 +7,10 @@ import { NotificationService } from '../../services/notification.service';
 import { OrderCardComponent } from '../order-card/order-card.component';
 import { KitchenStatsComponent } from '../kitchen-stats/kitchen-stats.component';
 import { DailySummaryComponent } from '../daily-summary/daily-summary.component';
+import { SkeletonCardComponent } from '../skeleton/skeleton-card.component';
+import { PullToRefreshDirective } from '../../directives/pull-to-refresh.directive';
 import { Order, OrderStatus } from '../../models/types';
-import { Subscription } from 'rxjs';
+import { Subscription, combineLatest } from 'rxjs';
 
 interface StatusOption {
   value: OrderStatus | 'all';
@@ -19,7 +21,7 @@ interface StatusOption {
 @Component({
   selector: 'app-kitchen-view',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule, OrderCardComponent, KitchenStatsComponent, DailySummaryComponent],
+  imports: [CommonModule, LucideAngularModule, OrderCardComponent, KitchenStatsComponent, DailySummaryComponent, SkeletonCardComponent, PullToRefreshDirective],
   templateUrl: './kitchen-view.component.html',
   styleUrls: ['./kitchen-view.component.css']
 })
@@ -30,6 +32,7 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
   VolumeX = VolumeX;
   
   orders: Order[] = [];
+  archivedOrders: Order[] = [];
   statusFilter: OrderStatus | 'all' = 'all';
   filteredOrders: Order[] = [];
   hasNewOrders = false;
@@ -37,6 +40,8 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
   isConnected = false;
   soundEnabled = true;
   lastOrderCount = 0;
+  isLoading = true;
+  skeletons = Array(3);
 
   private subscriptions: Subscription[] = [];
 
@@ -55,25 +60,24 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    // Suscribirse a las órdenes
     this.subscriptions.push(
-      this.appService.orders$.subscribe(orders => {
+      this.appService.loadingOrders$.subscribe(l => this.isLoading = l)
+    );
+
+    this.subscriptions.push(
+      combineLatest([this.appService.orders$, this.appService.archivedOrders$]).subscribe(([orders, archived]) => {
         const previousPendingCount = this.orders.filter(o => o.status === 'pending').length;
         this.orders = orders;
-        
+        this.archivedOrders = archived.filter(o => o.status === 'completed');
+        this.isLoading = false;
+
         const currentPendingCount = orders.filter(o => o.status === 'pending').length;
-        
-        // Detectar nuevas órdenes pendientes
         if (currentPendingCount > previousPendingCount) {
           this.hasNewOrders = true;
           this.newOrdersCount = currentPendingCount;
-          
-          // Auto-ocultar la alerta después de 10 segundos
-          setTimeout(() => {
-            this.hasNewOrders = false;
-          }, 10000);
+          setTimeout(() => { this.hasNewOrders = false; }, 10000);
         }
-        
+
         this.updateFilteredOrders();
       })
     );
@@ -92,6 +96,13 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(sub => sub.unsubscribe());
   }
 
+  onPullRefresh(done: () => void) { setTimeout(done, 1200); }
+
+  staggerClass(i: number): string {
+    const d = ['stagger-1','stagger-2','stagger-3','stagger-4','stagger-5'];
+    return `animate-fadeInUp ${d[i % d.length]}`;
+  }
+
   setStatusFilter(status: OrderStatus | 'all') {
     this.statusFilter = status;
     this.updateFilteredOrders();
@@ -103,9 +114,13 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
   }
 
   private updateFilteredOrders() {
-    this.filteredOrders = this.statusFilter === 'all' 
-      ? this.orders 
-      : this.orders.filter(order => order.status === this.statusFilter);
+    if (this.statusFilter === 'all') {
+      this.filteredOrders = this.orders;
+    } else if (this.statusFilter === 'completed') {
+      this.filteredOrders = this.archivedOrders;
+    } else {
+      this.filteredOrders = this.orders.filter(o => o.status === this.statusFilter);
+    }
   }
 
   getSelectedStatusLabel(): string {
@@ -114,10 +129,9 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
   }
 
   getOrderCountByStatus(status: OrderStatus | 'all'): number {
-    if (status === 'all') {
-      return this.orders.length;
-    }
-    return this.orders.filter(order => order.status === status).length;
+    if (status === 'all') return this.orders.length;
+    if (status === 'completed') return this.archivedOrders.length;
+    return this.orders.filter(o => o.status === status).length;
   }
 
   trackByOrderId(index: number, order: Order): string {

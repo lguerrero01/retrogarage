@@ -35,3 +35,17 @@ src/environments/environment.development.ts
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Capacitor Android - build artifacts (keep source, ignore generated)
+android/.gradle/
+android/app/build/
+android/build/
+
+# Playwright MCP screenshots and snapshots
+.playwright-mcp/
+
+# Supabase local temp files
+supabase/.temp/
+
+# Misc images generated during development
+modern-menu.png

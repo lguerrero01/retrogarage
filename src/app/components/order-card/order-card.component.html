@@ -14,7 +14,7 @@
     </div>
   </div>
 
-  <div class="p-6">
+  <div class="p-4 sm:p-6">
     <!-- Customer Info -->
     <div class="mb-4 space-y-2">
       <div class="flex items-center text-gray-700">
@@ -95,17 +95,50 @@
 
       <!-- Action Buttons -->
       <div class="space-y-2">
-        <button *ngIf="canAdvanceStatus(order.status)"
+        <!-- Modo cocina: avanzar cualquier estado -->
+        <button *ngIf="!waiterMode && canAdvanceStatus(order.status)"
           (click)="advanceStatus()"
-          class="w-full bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-3 rounded-lg font-bold transition-colors">
+          class="w-full bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-3 rounded-lg font-bold transition-colors press-effect">
           {{getButtonText(order.status)}}
+        </button>
+
+        <!-- Modo mesero: solo entregar cuando está listo -->
+        <button *ngIf="waiterMode && order.status === 'ready'"
+          (click)="advanceStatus()"
+          class="w-full bg-[#8624ce] hover:bg-[#8624ce]/90 text-white py-3 rounded-lg font-bold transition-colors press-effect flex items-center justify-center space-x-2">
+          <span>Entregar al cliente</span>
         </button>
 
         <button *ngIf="order.status === 'completed'"
           (click)="generateInvoice()"
-          class="w-full bg-[#8624ce] hover:bg-[#8624ce]/90 text-white py-2 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors">
+          class="w-full bg-[#8624ce] hover:bg-[#8624ce]/90 text-white py-2 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors press-effect">
           <lucide-icon [img]="Receipt" class="h-4 w-4"></lucide-icon>
           <span>Generar Factura</span>
+        </button>
+
+        <button *ngIf="canDeleteCompleted"
+          (click)="deleteCompleted()"
+          [disabled]="isDeleting"
+          class="w-full border border-red-300 text-red-600 hover:bg-red-50 py-2 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors press-effect disabled:opacity-50">
+          <svg *ngIf="isDeleting" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <lucide-icon *ngIf="!isDeleting" [img]="Trash2" class="h-4 w-4"></lucide-icon>
+          <span>{{ isDeleting ? 'Eliminando...' : 'Eliminar pedido' }}</span>
+        </button>
+
+        <!-- Cancelar pedido (chef / admin) -->
+        <button *ngIf="canCancel"
+          (click)="cancelOrder()"
+          [disabled]="isCancelling"
+          class="w-full border border-red-300 text-red-600 hover:bg-red-50 py-2 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors press-effect disabled:opacity-50">
+          <svg *ngIf="isCancelling" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <lucide-icon *ngIf="!isCancelling" [img]="Ban" class="h-4 w-4"></lucide-icon>
+          <span>{{isCancelling ? 'Cancelando...' : 'Cancelar pedido'}}</span>
         </button>
       </div>
     </div>

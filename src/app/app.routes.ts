@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { MenuViewComponent } from './components/menu-view/menu-view.component';
 import { KitchenViewComponent } from './components/kitchen-view/kitchen-view.component';
 import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
+import { WaiterOrdersViewComponent } from './components/waiter-orders-view/waiter-orders-view.component';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
@@ -13,6 +14,11 @@ export const routes: Routes = [
   {
     path: 'menu',
     component: MenuViewComponent
+  },
+  {
+    path: 'orders',
+    component: WaiterOrdersViewComponent,
+    canActivate: [authGuard]
   },
   {
     path: 'kitchen',

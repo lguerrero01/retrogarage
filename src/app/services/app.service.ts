@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { filter, map, distinctUntilChanged } from 'rxjs/operators';
 import { CartItem, Order, Customer, MenuItem } from '../models/types';
 import { menuItems as defaultMenuItems } from '../data/menu-items';
 import { NotificationService } from './notification.service';
@@ -8,6 +9,7 @@ import { AuthService } from './auth.service';
 import { ProductSupabaseService } from './product-supabase.service';
 import { OrderSupabaseService } from './order-supabase.service';
 import { dbOrderToOrder } from './order-supabase.service';
+import { PushSubscriptionService } from './push-subscription.service';
 
 interface DbOrder {
   id: string;
@@ -53,31 +55,91 @@ export class AppService {
   private cartSubject = new BehaviorSubject<CartItem[]>(this.getStoredCart());
   private ordersSubject = new BehaviorSubject<Order[]>(this.getStoredOrders());
   private menuItemsSubject = new BehaviorSubject<MenuItem[]>(this.getStoredMenuItems());
+  private archivedOrdersSubject = new BehaviorSubject<Order[]>([]);
+  private loadingMenuSubject = new BehaviorSubject<boolean>(true);
+  private loadingOrdersSubject = new BehaviorSubject<boolean>(true);
+  private cartOpenSubject = new BehaviorSubject<boolean>(false);
+  private ordersInitialized = false;
 
   cart$ = this.cartSubject.asObservable();
   orders$ = this.ordersSubject.asObservable();
   menuItems$ = this.menuItemsSubject.asObservable();
+  archivedOrders$ = this.archivedOrdersSubject.asObservable();
+  loadingMenu$ = this.loadingMenuSubject.asObservable();
+  loadingOrders$ = this.loadingOrdersSubject.asObservable();
+  cartOpen$ = this.cartOpenSubject.asObservable();
+
+  setCartOpen(open: boolean) { this.cartOpenSubject.next(open); }
 
   constructor(
     private notificationService: NotificationService,
     private realtimeService: SupabaseRealtimeService,
     private authService: AuthService,
     private productService: ProductSupabaseService,
-    private orderService: OrderSupabaseService
+    private orderService: OrderSupabaseService,
+    private pushService: PushSubscriptionService
   ) {
     this.initRealtimeListeners();
+    this.loadArchivedOrders();
+
+    // Al hacer login, el fetch inicial pudo haber corrido sin auth (RLS vacío).
+    // Re-fetch con el token activo para poblar los datos correctamente.
+    this.authService.authState$.pipe(
+      map(s => s.isAuthenticated),
+      distinctUntilChanged(),
+      filter(isAuth => isAuth)
+    ).subscribe(() => {
+      this.loadingOrdersSubject.next(true);
+      this.realtimeService.resubscribeAll(); // recrea canales con JWT autenticado
+      this.loadArchivedOrders();
+    });
+  }
+
+  loadArchivedOrders() {
+    this.orderService.getArchivedOrders()
+      .then(orders => this.archivedOrdersSubject.next(orders))
+      .catch(err => console.error('Error loading archived orders:', err));
+  }
+
+  async deleteArchivedOrder(orderId: string): Promise<void> {
+    await this.orderService.deleteArchivedOrder(orderId);
+    this.archivedOrdersSubject.next(
+      this.archivedOrdersSubject.value.filter(o => o.id !== orderId)
+    );
   }
 
   private initRealtimeListeners() {
     this.realtimeService.listenToTable<DbOrder>('orders', (rows) => {
       const orders = rows.map(dbOrderToOrder);
+
+      if (this.ordersInitialized) {
+        const prevIds = new Set(this.ordersSubject.value.map(o => o.id));
+        const newIds = new Set(orders.map(o => o.id));
+
+        // Notificar al chef cuando llega un nuevo pedido pendiente
+        if (this.authService.hasRole('chef')) {
+          orders
+            .filter(o => !prevIds.has(o.id) && o.status === 'pending')
+            .forEach(o => this.notificationService.notifyNewOrder(o.id, o.customer.name));
+        }
+
+        // Si algún pedido desapareció (fue completado/cancelado por otro cliente), recargar archivados
+        const someRemoved = [...prevIds].some(id => !newIds.has(id));
+        if (someRemoved) {
+          this.loadArchivedOrders();
+        }
+      }
+      this.ordersInitialized = true;
+
       this.ordersSubject.next(orders);
+      this.loadingOrdersSubject.next(false);
       localStorage.setItem('restaurant-orders', JSON.stringify(orders));
     });
 
     this.realtimeService.listenToTable<DbProduct>('products', (rows) => {
       const items = rows.map(dbProductToMenuItem);
       this.menuItemsSubject.next(items);
+      this.loadingMenuSubject.next(false);
       localStorage.setItem('restaurant-menu-items', JSON.stringify(items));
     });
   }
@@ -142,23 +204,54 @@ export class AppService {
       .then(order => {
         this.clearCart();
         this.notificationService.notifyNewOrder(order.id, customer.name);
+        // Push a todos los chefs/admins (incluso con la app cerrada)
+        this.pushService.sendToChefs(order.id, customer.name);
       })
       .catch(err => console.error('Error creating order:', err));
   }
 
   updateOrderStatus(orderId: string, status: Order['status']) {
+    if (status === 'completed') {
+      const order = this.ordersSubject.value.find(o => o.id === orderId);
+      if (order) {
+        const completedOrder = { ...order, status: 'completed' as const };
+        // Actualización optimista: mueve el pedido a archivados de inmediato
+        // para que las estadísticas no tengan un gap mientras llega el realtime DELETE
+        this.archivedOrdersSubject.next([completedOrder, ...this.archivedOrdersSubject.value]);
+
+        this.orderService.updateStatus(orderId, 'completed')
+          .then(() => this.orderService.archiveOrder(completedOrder))
+          .then(() => this.loadArchivedOrders()) // sincroniza con Supabase
+          .catch(console.error);
+
+        // Quita el pedido de la lista activa optimísticamente
+        this.ordersSubject.next(this.ordersSubject.value.filter(o => o.id !== orderId));
+        this.notificationService.notifyOrderStatusUpdate(orderId, status);
+        return;
+      }
+    }
+
     this.orderService.updateStatus(orderId, status)
-      .then(() => {
-        if (status === 'completed') {
-          const order = this.ordersSubject.value.find(o => o.id === orderId);
-          if (order) this.orderService.archiveOrder({ ...order, status }).catch(console.error);
-        }
-      })
       .catch(err => console.error('Error updating status:', err));
 
     const updated = this.ordersSubject.value.map(o => o.id === orderId ? { ...o, status } : o);
     this.ordersSubject.next(updated);
     this.notificationService.notifyOrderStatusUpdate(orderId, status);
+  }
+
+  cancelOrder(orderId: string): Promise<void> {
+    const order = this.ordersSubject.value.find(o => o.id === orderId);
+    if (!order) return Promise.reject('Order not found');
+
+    const cancelledOrder = { ...order, status: 'cancelled' as const };
+    // Actualización optimista: refleja el cambio antes del round-trip
+    this.archivedOrdersSubject.next([cancelledOrder, ...this.archivedOrdersSubject.value]);
+    this.ordersSubject.next(this.ordersSubject.value.filter(o => o.id !== orderId));
+
+    return this.orderService.updateStatus(orderId, 'cancelled')
+      .then(() => this.orderService.archiveOrder(cancelledOrder))
+      .then(() => this.loadArchivedOrders())
+      .catch(console.error) as Promise<void>;
   }
 
   addMenuItem(item: MenuItem) {

@@ -50,8 +50,18 @@ export class LoginComponent implements OnInit {
       } else if (this.isModal) {
         this.authService.closeLoginModal();
       }
-    } catch {
-      this.errorMessage = 'Correo o contraseña incorrectos';
+    } catch (err: any) {
+      if (err?.message === 'TIMEOUT') {
+        // Clear stale session so the next attempt works without page reload
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            localStorage.removeItem(key);
+          }
+        }
+        this.errorMessage = 'La conexión tardó demasiado. Intenta de nuevo.';
+      } else {
+        this.errorMessage = 'Correo o contraseña incorrectos';
+      }
     } finally {
       this.isLoading = false;
     }

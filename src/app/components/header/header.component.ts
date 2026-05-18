@@ -24,7 +24,7 @@ export class HeaderComponent implements OnInit {
   LogOut = LogOut;
   User = User;
 
-  currentView: 'menu' | 'kitchen' | 'admin' = 'menu';
+  currentView: 'menu' | 'kitchen' | 'admin' | 'orders' = 'menu';
   cartItemCount = 0;
   isAuthenticated = false;
   currentUser: UserType | null = null;
@@ -66,6 +66,8 @@ export class HeaderComponent implements OnInit {
       this.currentView = 'kitchen';
     } else if (url.includes('/admin')) {
       this.currentView = 'admin';
+    } else if (url.includes('/orders')) {
+      this.currentView = 'orders';
     } else {
       this.currentView = 'menu';
     }

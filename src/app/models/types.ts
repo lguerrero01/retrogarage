@@ -25,6 +25,7 @@ export interface Customer {
 
 export interface Order {
   id: string;
+  waiterId?: string;
   customer: Customer;
   items: CartItem[];
   total: number;

@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Clock, CheckCircle, AlertCircle, TrendingUp } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
 import { Order } from '../../models/types';
+import { combineLatest, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-kitchen-stats',
@@ -11,35 +12,51 @@ import { Order } from '../../models/types';
   templateUrl: './kitchen-stats.component.html',
   styleUrls: ['./kitchen-stats.component.css']
 })
-export class KitchenStatsComponent implements OnInit {
+export class KitchenStatsComponent implements OnInit, OnDestroy {
   Clock = Clock;
   CheckCircle = CheckCircle;
   AlertCircle = AlertCircle;
   TrendingUp = TrendingUp;
-  
+
   orders: Order[] = [];
+  archivedOrders: Order[] = [];
   statCards: any[] = [];
+
+  private sub?: Subscription;
 
   constructor(private appService: AppService) {}
 
   ngOnInit() {
-    this.appService.orders$.subscribe(orders => {
+    this.sub = combineLatest([
+      this.appService.orders$,
+      this.appService.archivedOrders$
+    ]).subscribe(([orders, archived]) => {
       this.orders = orders;
+      this.archivedOrders = archived;
       this.updateStats();
     });
   }
 
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
+  }
+
   private updateStats() {
+    const today = new Date().toISOString().split('T')[0];
+
     const stats = {
-      pending: this.orders.filter(order => order.status === 'pending').length,
-      preparing: this.orders.filter(order => order.status === 'preparing').length,
-      ready: this.orders.filter(order => order.status === 'ready').length,
-      completed: this.orders.filter(order => order.status === 'completed').length,
+      pending: this.orders.filter(o => o.status === 'pending').length,
+      preparing: this.orders.filter(o => o.status === 'preparing').length,
+      ready: this.orders.filter(o => o.status === 'ready').length,
     };
 
-    const totalRevenue = this.orders
-      .filter(order => order.status === 'completed')
-      .reduce((sum, order) => sum + order.total, 0);
+    // Los pedidos completados van al historial (archivedOrders), no quedan en orders
+    const completedToday = this.archivedOrders.filter(o =>
+      o.status === 'completed' &&
+      new Date(o.timestamp).toISOString().split('T')[0] === today
+    );
+
+    const totalRevenue = completedToday.reduce((sum, o) => sum + o.total, 0);
 
     this.statCards = [
       {

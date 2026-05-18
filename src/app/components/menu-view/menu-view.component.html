@@ -1,64 +1,105 @@
-<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Hero Section -->
-    <div class="text-center mb-12">
-      <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100"
+     appPullToRefresh (pullRefresh)="onPullRefresh($event)">
+
+  <div class="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-6">
+
+    <!-- Hero -->
+    <div class="text-center mb-6 sm:mb-10 animate-slideInDown">
+      <h1 class="text-3xl sm:text-5xl font-bold text-gray-800 mb-2 sm:mb-4">
         Nuestro <span class="text-[#ed450d]">Menú</span>
       </h1>
-      <p class="text-xl text-gray-600 max-w-2xl mx-auto">
-        Descubre nuestra selección de platillos preparados con ingredientes frescos y mucho amor
+      <p class="text-base sm:text-xl text-gray-500 max-w-2xl mx-auto">
+        Ingredientes frescos, preparados con mucho amor
       </p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <!-- Menu Section -->
       <div class="lg:col-span-2">
+
         <app-category-filter
           [categories]="categories"
           [selectedCategory]="selectedCategory"
           (onCategoryChange)="onCategoryChange($event)">
         </app-category-filter>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <app-menu-card
-            *ngFor="let item of filteredItems"
-            [item]="item">
-          </app-menu-card>
+        <!-- Skeletons mientras carga -->
+        <div *ngIf="isLoading" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <app-skeleton-card *ngFor="let s of skeletons" [showActions]="true"></app-skeleton-card>
         </div>
+
+        <!-- Cards con stagger -->
+        <div *ngIf="!isLoading" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div *ngFor="let item of filteredItems; let i = index" [class]="staggerClass(i)">
+            <app-menu-card [item]="item"></app-menu-card>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div *ngIf="!isLoading && filteredItems.length === 0"
+             class="text-center py-16 animate-fadeIn">
+          <div class="text-6xl mb-4">🍽️</div>
+          <h3 class="text-xl font-semibold text-gray-500 mb-2">Sin platillos disponibles</h3>
+          <p class="text-gray-400">Prueba con otra categoría</p>
+        </div>
+
       </div>
 
-      <!-- Cart Section -->
-      <div class="lg:col-span-1">
-        <div class="sticky top-24">
+      <!-- Cart Desktop -->
+      <div class="hidden lg:block lg:col-span-1">
+        <div class="sticky top-20">
           <app-cart-summary></app-cart-summary>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Mobile Cart Button -->
-  <button
-    *ngIf="cartItemCount > 0"
+  <!-- FAB carrito mobile -->
+  <button *ngIf="cartItemCount > 0"
     (click)="toggleMobileCart()"
-    class="lg:hidden fixed bottom-6 right-6 bg-[#ed450d] text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center font-bold text-lg z-50">
+    class="lg:hidden fixed bottom-20 right-4 z-30 bg-[#ed450d] text-white w-14 h-14 rounded-full shadow-2xl
+           flex items-center justify-center font-bold text-lg press-effect animate-bounceIn
+           ring-4 ring-[#ed450d]/30">
     {{cartItemCount}}
   </button>
 
-  <!-- Mobile Cart Modal -->
+  <!-- Mobile Cart Bottom Sheet -->
   <div *ngIf="showMobileCart"
-       class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
-    <div class="bg-white w-full max-h-[80vh] overflow-y-auto rounded-t-xl">
-      <div class="p-4 border-b flex justify-between items-center">
-        <h2 class="text-xl font-bold">Tu Pedido</h2>
-        <button
-          (click)="showMobileCart = false"
-          class="text-gray-500 hover:text-gray-700">
-          ✕
+       class="lg:hidden fixed inset-0 z-50"
+       (click)="appService.setCartOpen(false)">
+    <div class="absolute inset-0 bg-black/50 animate-fadeIn"></div>
+
+    <!-- Sheet -->
+    <div class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl flex flex-col animate-slideInUp"
+         style="max-height: 88vh;"
+         [style.transform]="'translateY(' + sheetTranslate + 'px)'"
+         [style.transition]="sheetDragging ? 'none' : 'transform 0.28s cubic-bezier(0.32,0.72,0,1)'"
+         (click)="$event.stopPropagation()">
+
+      <!-- Drag handle — arrastra aquí para cerrar -->
+      <div class="flex-shrink-0 flex flex-col items-center cursor-grab active:cursor-grabbing pt-3 pb-2"
+           (touchstart)="onSheetDragStart($event)"
+           (touchmove)="onSheetDragMove($event)"
+           (touchend)="onSheetDragEnd()">
+        <div class="w-10 h-1.5 bg-gray-200 rounded-full"></div>
+      </div>
+
+      <!-- Header fijo -->
+      <div class="flex-shrink-0 px-5 pb-3 flex justify-between items-center border-b border-gray-100">
+        <h2 class="text-xl font-bold text-gray-900">Tu Pedido</h2>
+        <button (click)="appService.setCartOpen(false)"
+                class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 press-effect hover:bg-gray-200 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
         </button>
       </div>
-      <div class="p-4">
+
+      <!-- Contenido scrollable -->
+      <div class="flex-1 overflow-y-auto overscroll-contain px-5 py-4">
         <app-cart-summary></app-cart-summary>
       </div>
     </div>
   </div>
+
 </div>

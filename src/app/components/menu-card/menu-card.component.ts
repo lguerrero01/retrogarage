@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, Plus, Minus, Settings } from 'lucide-angular';
 import { MenuItem } from '../../models/types';
 import { AppService } from '../../services/app.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-menu-card',
@@ -14,18 +15,19 @@ import { AppService } from '../../services/app.service';
 })
 export class MenuCardComponent {
   @Input() item!: MenuItem;
-  
+
   Plus = Plus;
   Minus = Minus;
   Settings = Settings;
-  
+
   quantity = 1;
   isAdding = false;
+  imgFailed = false;
   showCustomization = false;
   selectedIngredients: string[] = [];
   removedIngredients: string[] = [];
 
-  constructor(private appService: AppService) {}
+  constructor(private appService: AppService, private authService: AuthService) {}
 
   ngOnInit() {
     if (this.item.ingredients) {
@@ -65,16 +67,25 @@ export class MenuCardComponent {
     }
   }
 
+  get isAuthenticated(): boolean {
+    return this.authService.isAuthenticated();
+  }
+
   addToCart() {
+    if (!this.authService.isAuthenticated()) {
+      this.authService.requestLogin();
+      return;
+    }
+
     this.isAdding = true;
-    
+
     const cartItem = {
       ...this.item,
       quantity: this.quantity,
       selectedIngredients: this.item.customizable ? [...this.selectedIngredients] : undefined,
       removedIngredients: this.item.customizable && this.removedIngredients.length > 0 ? [...this.removedIngredients] : undefined
     };
-    
+
     this.appService.addToCart(cartItem);
     
     setTimeout(() => {

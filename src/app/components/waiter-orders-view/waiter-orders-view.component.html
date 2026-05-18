@@ -1,0 +1,93 @@
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24">
+  <div class="max-w-4xl mx-auto px-5 sm:px-6 py-6">
+
+    <!-- Encabezado -->
+    <div class="mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">
+        Mis <span class="text-[#ed450d]">Pedidos</span>
+      </h1>
+      <p class="text-sm text-gray-500 mt-1">Solo los pedidos tomados por ti</p>
+    </div>
+
+    <!-- Banner: hay pedidos listos -->
+    <div *ngIf="readyOrders.length > 0"
+         class="mb-6 bg-[#8624ce] text-white rounded-xl p-4 flex items-center space-x-3 shadow-lg animate-pulse">
+      <lucide-icon [img]="Bell" class="h-6 w-6 flex-shrink-0 animate-bounce"></lucide-icon>
+      <div>
+        <p class="font-bold text-lg">
+          ¡{{readyOrders.length > 1 ? readyOrders.length + ' pedidos listos' : 'Pedido listo'}}!
+        </p>
+        <p class="text-sm opacity-90">Pasa por la cocina a recoger</p>
+      </div>
+    </div>
+
+    <!-- Skeletons de carga -->
+    <div *ngIf="isLoading" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <app-skeleton-card *ngFor="let s of skeletons" imageHeight="h-24" [showActions]="true">
+      </app-skeleton-card>
+    </div>
+
+    <!-- Estado vacío -->
+    <div *ngIf="!isLoading && activeOrders.length === 0"
+         class="text-center py-16 animate-fadeIn">
+      <div class="bg-white rounded-2xl shadow-md p-8 max-w-sm mx-auto">
+        <div class="text-5xl mb-4">🛎️</div>
+        <h3 class="text-lg font-semibold text-gray-600 mb-2">Sin pedidos activos</h3>
+        <p class="text-gray-400 text-sm">Toma un pedido desde el menú y aparecerá aquí</p>
+      </div>
+    </div>
+
+    <!-- Listos para entregar (prioridad) -->
+    <div *ngIf="!isLoading && readyOrders.length > 0" class="mb-8">
+      <div class="flex items-center space-x-2 mb-4">
+        <div class="h-3 w-3 rounded-full bg-[#8624ce] animate-ping"></div>
+        <h2 class="text-lg font-bold text-[#8624ce]">
+          Listos para entregar ({{readyOrders.length}})
+        </h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div *ngFor="let order of readyOrders; trackBy: trackById"
+             class="ring-2 ring-[#8624ce] ring-offset-2 rounded-xl animate-fadeInUp">
+          <app-order-card [order]="order" [waiterMode]="true"></app-order-card>
+        </div>
+      </div>
+    </div>
+
+    <!-- En preparación -->
+    <div *ngIf="!isLoading && preparingOrders.length > 0" class="mb-8">
+      <div class="flex items-center space-x-2 mb-4">
+        <div class="h-3 w-3 rounded-full bg-[#ed450d]"></div>
+        <h2 class="text-lg font-bold text-gray-700">
+          En preparación ({{preparingOrders.length}})
+        </h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <app-order-card
+          *ngFor="let order of preparingOrders; trackBy: trackById"
+          [order]="order"
+          [waiterMode]="true"
+          class="animate-fadeInUp">
+        </app-order-card>
+      </div>
+    </div>
+
+    <!-- Pendientes (en espera de cocina) -->
+    <div *ngIf="!isLoading && pendingOrders.length > 0">
+      <div class="flex items-center space-x-2 mb-4">
+        <div class="h-3 w-3 rounded-full bg-[#fac20a]"></div>
+        <h2 class="text-lg font-bold text-gray-700">
+          Pendientes ({{pendingOrders.length}})
+        </h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <app-order-card
+          *ngFor="let order of pendingOrders; trackBy: trackById"
+          [order]="order"
+          [waiterMode]="true"
+          class="animate-fadeInUp">
+        </app-order-card>
+      </div>
+    </div>
+
+  </div>
+</div>

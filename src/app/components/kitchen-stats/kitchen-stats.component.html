@@ -1,6 +1,6 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
   <div *ngFor="let stat of statCards"
-       [class]="'border rounded-xl p-6 text-center transition-all duration-300 hover:scale-105 ' + stat.bgColor">
+       [class]="'border rounded-xl p-4 sm:p-6 text-center transition-colors ' + stat.bgColor">
     <div [class]="'inline-flex items-center justify-center w-12 h-12 rounded-lg mb-3 ' + stat.color">
       <lucide-icon [img]="stat.icon" class="h-6 w-6"></lucide-icon>
     </div>

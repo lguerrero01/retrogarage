@@ -11,12 +11,15 @@ export class SupabaseRealtimeService implements OnDestroy {
 
   private channels = new Map<string, RealtimeChannel>();
   private cache = new Map<string, unknown[]>();
+  private callbacks = new Map<string, (data: unknown[]) => void>();
 
   listenToTable<T extends { id: string }>(
     table: string,
     onData: (data: T[]) => void
   ): void {
     if (this.channels.has(table)) return;
+
+    this.callbacks.set(table, onData as (data: unknown[]) => void);
 
     supabase.from(table).select('*').then(({ data, error }) => {
       if (error) { console.error(`[Supabase] fetch ${table}:`, error); return; }
@@ -47,6 +50,24 @@ export class SupabaseRealtimeService implements OnDestroy {
       });
 
     this.channels.set(table, channel);
+  }
+
+  /**
+   * Destruye los canales existentes (creados sin auth) y los recrea con la
+   * sesión activa. Necesario después de login porque Supabase RLS aplica al
+   * momento de suscripción del canal WebSocket, no solo al fetch REST.
+   */
+  resubscribeAll(): void {
+    const savedCallbacks = new Map(this.callbacks);
+
+    this.channels.forEach(ch => supabase.removeChannel(ch));
+    this.channels.clear();
+    this.callbacks.clear();
+    // Mantener el cache para no mostrar vacío mientras re-suscribe
+
+    savedCallbacks.forEach((cb, table) => {
+      this.listenToTable(table, cb as <T extends { id: string }>(data: T[]) => void);
+    });
   }
 
   unsubscribeFromTable(table: string): void {

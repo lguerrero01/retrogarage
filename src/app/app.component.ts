@@ -3,13 +3,17 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './components/header/header.component';
 import { LoginComponent } from './components/login/login.component';
+import { BottomNavComponent } from './components/bottom-nav/bottom-nav.component';
+import { ToastComponent } from './components/toast/toast.component';
+import { ConfirmModalComponent } from './components/confirm-modal/confirm-modal.component';
 import { AppService } from './services/app.service';
 import { AuthService } from './services/auth.service';
+import { PushSubscriptionService } from './services/push-subscription.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, LoginComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, LoginComponent, BottomNavComponent, ToastComponent, ConfirmModalComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
@@ -18,12 +22,20 @@ export class AppComponent implements OnInit {
 
   constructor(
     private appService: AppService,
-    private authService: AuthService
+    private authService: AuthService,
+    private pushService: PushSubscriptionService
   ) {}
 
   ngOnInit() {
     this.authService.showLoginModal$.subscribe(showModal => {
       this.showLoginModal = showModal;
+    });
+
+    // Suscribir al chef/admin para push notifications al loguearse
+    this.authService.authState$.subscribe(state => {
+      if (state.isAuthenticated && state.user && this.authService.hasRole('chef')) {
+        this.pushService.subscribeUser(state.user.id);
+      }
     });
   }
 }

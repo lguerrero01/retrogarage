@@ -18,6 +18,7 @@ export function dbOrderToOrder(o: DbOrder): Order {
   const prefs = o.customer_preferences ?? {};
   return {
     id: o.id,
+    waiterId: o.waiter_id ?? undefined,
     customer: {
       name: prefs.name ?? '',
       phone: prefs.phone ?? '',
@@ -81,10 +82,36 @@ export class OrderSupabaseService {
     if (error) throw error;
   }
 
-  async getArchivedOrders(): Promise<Order[]> {
+  async deleteArchivedOrder(id: string): Promise<void> {
+    const { error, count } = await supabase
+      .from('orders_history')
+      .delete({ count: 'exact' })
+      .eq('id', id);
+    if (error) throw error;
+    if (count === 0) throw new Error('RLS_BLOCKED');
+  }
+
+  async getArchivedOrders(dateFrom?: string): Promise<Order[]> {
+    const from = dateFrom
+      ?? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const { data, error } = await supabase
       .from('orders_history')
       .select('*')
+      .gte('archived_at', from)
+      .order('archived_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    return (data as DbOrder[]).map(dbOrderToOrder);
+  }
+
+  async getArchivedOrdersForDate(date: string): Promise<Order[]> {
+    const start = `${date}T00:00:00.000Z`;
+    const end   = `${date}T23:59:59.999Z`;
+    const { data, error } = await supabase
+      .from('orders_history')
+      .select('*')
+      .gte('archived_at', start)
+      .lte('archived_at', end)
       .order('archived_at', { ascending: false });
     if (error) throw error;
     return (data as DbOrder[]).map(dbOrderToOrder);
