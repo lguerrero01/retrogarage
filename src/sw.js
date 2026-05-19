@@ -12,8 +12,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title ?? '¡Nuevo Pedido!', {
       body: data.body ?? '',
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
+      icon: '/assets/icon-192.png',
+      badge: '/assets/favicon-64.png',
       vibrate: [200, 100, 200, 100, 200],
       requireInteraction: true,
       tag: data.orderId ?? 'order-' + Date.now(),
