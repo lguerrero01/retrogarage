@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
-import { LucideAngularModule, UtensilsCrossed, ShoppingCart, ChefHat, Settings, ClipboardList } from 'lucide-angular';
+import { LucideAngularModule, UtensilsCrossed, ShoppingCart, ChefHat, Settings, ClipboardList, Boxes, User } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
 import { AuthService } from '../../services/auth.service';
 
@@ -61,6 +61,14 @@ interface Tab {
           <span class="text-[10px] font-semibold tracking-wide">Pedidos</span>
         </button>
 
+        <!-- Inventario (chef/admin) -->
+        <button *ngIf="canInventory" (click)="go('/inventario')"
+                class="flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-xl press-effect transition-colors"
+                [class]="isTabActive('inventario') ? 'text-[#2a23b8]' : 'text-gray-400'">
+          <lucide-icon [img]="Boxes" class="h-5 w-5"></lucide-icon>
+          <span class="text-[10px] font-semibold tracking-wide">Inventario</span>
+        </button>
+
         <!-- Cocina -->
         <button *ngIf="canKitchen" (click)="go('/kitchen')"
                 class="flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-xl press-effect transition-colors"
@@ -77,6 +85,22 @@ interface Tab {
           <span class="text-[10px] font-semibold tracking-wide">Admin</span>
         </button>
 
+        <!-- Mis pedidos (cliente) -->
+        <button *ngIf="isCustomer" (click)="go('/mis-pedidos')"
+                class="flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-xl press-effect transition-colors"
+                [class]="isTabActive('misped') ? 'text-[#ed450d]' : 'text-gray-400'">
+          <lucide-icon [img]="ClipboardList" class="h-5 w-5"></lucide-icon>
+          <span class="text-[10px] font-semibold tracking-wide">Pedidos</span>
+        </button>
+
+        <!-- Mi cuenta (cliente) -->
+        <button *ngIf="isCustomer" (click)="go('/cuenta')"
+                class="flex flex-col items-center justify-center gap-1 flex-1 py-2 rounded-xl press-effect transition-colors"
+                [class]="isTabActive('cuenta') ? 'text-[#2a23b8]' : 'text-gray-400'">
+          <lucide-icon [img]="User" class="h-5 w-5"></lucide-icon>
+          <span class="text-[10px] font-semibold tracking-wide">Cuenta</span>
+        </button>
+
       </div>
     </nav>
   `
@@ -87,6 +111,8 @@ export class BottomNavComponent implements OnInit, OnDestroy {
   ChefHat = ChefHat;
   Settings = Settings;
   ClipboardList = ClipboardList;
+  Boxes = Boxes;
+  User = User;
 
   currentUrl = '/menu';
   cartCount = 0;
@@ -94,6 +120,8 @@ export class BottomNavComponent implements OnInit, OnDestroy {
   canKitchen = false;
   canAdmin = false;
   canOrders = false;
+  canInventory = false;
+  isCustomer = false;
 
   private subs: Subscription[] = [];
 
@@ -126,8 +154,10 @@ export class BottomNavComponent implements OnInit, OnDestroy {
       this.authService.authState$.subscribe(state => {
         this.canKitchen = this.authService.canAccessKitchen();
         this.canAdmin = this.authService.canAccessAdmin();
-        // Mis Pedidos: autenticado pero sin acceso a cocina (mesero puro)
-        this.canOrders = state.isAuthenticated && !this.canKitchen;
+        this.canInventory = this.authService.canAccessKitchen();
+        this.isCustomer = this.authService.isCustomer();
+        // Mis Pedidos (mesero): staff autenticado sin acceso a cocina
+        this.canOrders = state.isAuthenticated && this.authService.isStaff() && !this.canKitchen;
       })
     );
   }
@@ -154,45 +184,41 @@ export class BottomNavComponent implements OnInit, OnDestroy {
     }
   }
 
-  isTabActive(tab: 'menu' | 'cart' | 'orders' | 'kitchen' | 'admin'): boolean {
+  isTabActive(tab: 'menu' | 'cart' | 'orders' | 'inventario' | 'kitchen' | 'admin' | 'misped' | 'cuenta'): boolean {
     const onMenu = this.currentUrl.startsWith('/menu');
     switch (tab) {
-      case 'cart':    return onMenu && this.cartIsOpen;
-      case 'menu':    return onMenu && !this.cartIsOpen;
-      case 'orders':  return this.currentUrl.startsWith('/orders');
-      case 'kitchen': return this.currentUrl.startsWith('/kitchen');
-      case 'admin':   return this.currentUrl.startsWith('/admin');
+      case 'cart':       return onMenu && this.cartIsOpen;
+      case 'menu':       return onMenu && !this.cartIsOpen;
+      case 'orders':     return this.currentUrl.startsWith('/orders');
+      case 'inventario': return this.currentUrl.startsWith('/inventario');
+      case 'kitchen':    return this.currentUrl.startsWith('/kitchen');
+      case 'admin':      return this.currentUrl.startsWith('/admin');
+      case 'misped':     return this.currentUrl.startsWith('/mis-pedidos');
+      case 'cuenta':     return this.currentUrl.startsWith('/cuenta');
     }
   }
 
-  /** Número real de tabs visibles */
-  private get tabCount(): number {
-    return 2
-      + (this.canOrders ? 1 : 0)
-      + (this.canKitchen ? 1 : 0)
-      + (this.canAdmin ? 1 : 0);
+  /** Tabs visibles en orden, según rol/estado (debe coincidir con el template) */
+  private get visibleTabs(): Array<'menu' | 'cart' | 'orders' | 'inventario' | 'kitchen' | 'admin' | 'misped' | 'cuenta'> {
+    const tabs: Array<'menu' | 'cart' | 'orders' | 'inventario' | 'kitchen' | 'admin' | 'misped' | 'cuenta'> = ['menu', 'cart'];
+    if (this.canOrders) tabs.push('orders');
+    if (this.canInventory) tabs.push('inventario');
+    if (this.canKitchen) tabs.push('kitchen');
+    if (this.canAdmin) tabs.push('admin');
+    if (this.isCustomer) { tabs.push('misped', 'cuenta'); }
+    return tabs;
   }
 
-  /** Índice del tab activo (0-based) */
   private get activeIndex(): number {
-    if (this.isTabActive('menu'))    return 0;
-    if (this.isTabActive('cart'))    return 1;
-    if (this.isTabActive('orders'))  return 2;
-    if (this.isTabActive('kitchen')) return this.canOrders ? 3 : 2;
-    if (this.isTabActive('admin')) {
-      let i = 2;
-      if (this.canOrders)   i++;
-      if (this.canKitchen)  i++;
-      return i;
-    }
-    return 0;
+    const i = this.visibleTabs.findIndex(t => this.isTabActive(t));
+    return i < 0 ? 0 : i;
   }
 
   get activeBarWidth(): string {
-    return `${100 / this.tabCount}%`;
+    return `${100 / this.visibleTabs.length}%`;
   }
 
   get activeBarLeft(): string {
-    return `${(this.activeIndex / this.tabCount) * 100}%`;
+    return `${(this.activeIndex / this.visibleTabs.length) * 100}%`;
   }
 }

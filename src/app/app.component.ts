@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './components/header/header.component';
-import { LoginComponent } from './components/login/login.component';
+import { AuthModalComponent } from './components/auth-modal/auth-modal.component';
 import { BottomNavComponent } from './components/bottom-nav/bottom-nav.component';
 import { ToastComponent } from './components/toast/toast.component';
 import { ConfirmModalComponent } from './components/confirm-modal/confirm-modal.component';
@@ -13,7 +13,7 @@ import { PushSubscriptionService } from './services/push-subscription.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, LoginComponent, BottomNavComponent, ToastComponent, ConfirmModalComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, AuthModalComponent, BottomNavComponent, ToastComponent, ConfirmModalComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })

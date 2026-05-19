@@ -72,11 +72,19 @@
         <span>Debes iniciar sesión para realizar tu pedido</span>
       </div>
 
+      <!-- Banner: local cerrado -->
+      <div *ngIf="blockedByHours"
+           class="flex items-center gap-3 bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 mb-3 text-gray-600 text-sm">
+        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-gray-400 flex-shrink-0"></span>
+        <span>{{ openState.label || 'El local está cerrado en este momento' }}. No es posible enviar pedidos ahora.</span>
+      </div>
+
       <button
         (click)="proceedToCheckout()"
-        class="w-full bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-4 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2">
+        [disabled]="blockedByHours"
+        class="w-full bg-[#ed450d] hover:bg-[#ed450d]/90 text-white py-4 rounded-xl font-bold text-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
         <lucide-icon *ngIf="!isAuthenticated" [img]="LogIn" class="h-5 w-5"></lucide-icon>
-        {{ isAuthenticated ? 'Proceder al Pedido' : 'Iniciar sesión para continuar' }}
+        {{ blockedByHours ? 'Cerrado' : (isAuthenticated ? 'Proceder al Pedido' : 'Iniciar sesión para continuar') }}
       </button>
     </ng-container>
 
@@ -144,3 +152,8 @@
     </form>
   </div>
 </div>
+
+<app-customer-checkout *ngIf="showCustomerCheckout"
+  [cart]="cart"
+  (close)="showCustomerCheckout = false">
+</app-customer-checkout>

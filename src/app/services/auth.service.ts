@@ -58,9 +58,20 @@ export class AuthService {
       id: userId,
       email,
       name: profile?.name ?? email,
-      role: (profile?.role ?? 'waiter') as User['role']
+      role: (profile?.role ?? 'customer') as User['role']
     };
     this.authStateSubject.next({ isAuthenticated: true, user, idToken });
+  }
+
+  /** Registro público: crea una cuenta de cliente (rol 'customer' vía trigger). */
+  async signUp(email: string, password: string, name: string, phone: string): Promise<{ ok: boolean; needsConfirmation: boolean; error?: string }> {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, phone } }
+    });
+    if (error) return { ok: false, needsConfirmation: false, error: error.message };
+    return { ok: true, needsConfirmation: !data.session };
   }
 
   async login(email: string, password: string): Promise<boolean> {
@@ -97,6 +108,27 @@ export class AuthService {
     if (role === 'admin') return user.role === 'admin';
     if (role === 'chef') return user.role === 'admin' || user.role === 'chef';
     return true;
+  }
+
+  /** Personal del local (admin/chef/waiter). Los clientes públicos NO son staff. */
+  isStaff(): boolean {
+    const user = this.getCurrentUser();
+    if (!user || !this.isAuthenticated()) return false;
+    return user.role !== 'customer';
+  }
+
+  isCustomer(): boolean {
+    const user = this.getCurrentUser();
+    return !!user && this.isAuthenticated() && user.role === 'customer';
+  }
+
+  async updateName(name: string): Promise<void> {
+    const u = this.getCurrentUser();
+    if (!u) return;
+    const { error } = await supabase.from('profiles').update({ name }).eq('id', u.id);
+    if (error) throw error;
+    const state = this.authStateSubject.value;
+    this.authStateSubject.next({ ...state, user: { ...u, name } });
   }
 
   canAccessKitchen(): boolean {

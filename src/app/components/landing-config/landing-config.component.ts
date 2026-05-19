@@ -4,13 +4,12 @@ import { FormsModule } from '@angular/forms';
 import {
   LucideAngularModule, X, Upload, Image, Globe, Phone, MapPin,
   Clock, Star, Instagram, Facebook, Smartphone, Trash2, Plus,
-  Save, ChevronLeft, ChevronRight, ExternalLink, Info, Camera
+  Save, ChevronLeft, ChevronRight, ExternalLink, Info, Camera, Copy, CreditCard
 } from 'lucide-angular';
-import { RestaurantConfigService, RestaurantConfig, StatItem } from '../../services/restaurant-config.service';
+import { RestaurantConfigService, RestaurantConfig, DayHours, DAY_NAMES } from '../../services/restaurant-config.service';
 import { ToastService } from '../../services/toast.service';
-import { Subscription } from 'rxjs';
 
-type Tab = 'info' | 'images' | 'social';
+type Tab = 'info' | 'images' | 'social' | 'hours' | 'pago';
 
 @Component({
   selector: 'app-landing-config',
@@ -34,14 +33,14 @@ type Tab = 'info' | 'images' | 'social';
     </div>
 
     <!-- Tabs -->
-    <div class="flex border-b flex-shrink-0">
+    <div class="flex overflow-x-auto scrollbar-hide border-b flex-shrink-0">
       <button *ngFor="let t of tabs" (click)="activeTab = t.id"
-        class="flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors"
+        class="flex-shrink-0 sm:flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors"
         [class.text-[#2a23b8]]="activeTab === t.id"
         [class.border-b-2]="activeTab === t.id"
         [class.border-[#2a23b8]]="activeTab === t.id"
         [class.text-gray-500]="activeTab !== t.id">
-        <lucide-icon [img]="t.icon" class="h-4 w-4"></lucide-icon>
+        <lucide-icon [img]="t.icon" class="h-4 w-4 flex-shrink-0"></lucide-icon>
         <span>{{ t.label }}</span>
       </button>
     </div>
@@ -245,6 +244,84 @@ type Tab = 'info' | 'images' | 'social';
         </div>
       </div>
 
+      <!-- TAB: Horario -->
+      <div *ngIf="activeTab === 'hours'" class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <p class="text-xs text-gray-400">
+            Define el horario de atención. Fuera de horario los clientes no podrán enviar pedidos online.
+          </p>
+          <button (click)="copyHoursToAll()"
+            class="self-start sm:self-auto flex items-center gap-1 text-xs font-semibold text-[#2a23b8] hover:text-[#2a23b8]/80 transition-colors flex-shrink-0">
+            <lucide-icon [img]="Copy" class="h-3.5 w-3.5"></lucide-icon> Copiar lunes a todos
+          </button>
+        </div>
+
+        <div class="space-y-2">
+          <div *ngFor="let d of form.business_hours"
+               class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+            <div class="flex items-center justify-between sm:justify-start sm:gap-3 sm:w-44 sm:flex-shrink-0">
+              <span class="text-sm font-semibold text-gray-700">{{ dayName(d.day) }}</span>
+              <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                <input type="checkbox" [(ngModel)]="d.closed" class="accent-[#ed450d]">
+                Cerrado
+              </label>
+            </div>
+
+            <div class="flex items-center gap-2 sm:flex-1 sm:justify-end" [class.opacity-40]="d.closed" [class.pointer-events-none]="d.closed">
+              <input type="time" [(ngModel)]="d.open"
+                class="flex-1 sm:flex-none min-w-0 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+              <span class="text-gray-300 text-xs flex-shrink-0">a</span>
+              <input type="time" [(ngModel)]="d.close"
+                class="flex-1 sm:flex-none min-w-0 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Zona horaria</label>
+          <input type="text" [(ngModel)]="form.timezone" placeholder="America/Caracas"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+          <p class="text-xs text-gray-400 mt-1">Formato IANA. Ej: America/Caracas, America/Bogota.</p>
+        </div>
+      </div>
+
+      <!-- TAB: Pago Móvil -->
+      <div *ngIf="activeTab === 'pago'" class="space-y-4">
+        <p class="text-xs text-gray-400">
+          Estos datos se le muestran al cliente para que realice el Pago Móvil al ordenar delivery o para comer en el local.
+        </p>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Banco</label>
+          <input type="text" [(ngModel)]="form.pago_movil!.bank" placeholder="Ej. Banesco (0134)"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Cédula / RIF</label>
+            <input type="text" [(ngModel)]="form.pago_movil!.id_number" placeholder="V-12345678"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Teléfono</label>
+            <input type="tel" [(ngModel)]="form.pago_movil!.phone" placeholder="0414-0000000"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Titular de la cuenta</label>
+          <input type="text" [(ngModel)]="form.pago_movil!.holder" placeholder="Nombre del titular"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+        </div>
+
+        <div class="border-t border-gray-100 pt-4">
+          <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Tarifa de delivery (USD)</label>
+          <input type="number" min="0" step="0.01" [(ngModel)]="form.delivery_fee"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-[#2a23b8]/30 focus:border-[#2a23b8] outline-none">
+          <p class="text-xs text-gray-400 mt-1">Costo fijo que se suma al total cuando el cliente elige delivery.</p>
+        </div>
+      </div>
+
     </div>
 
     <!-- Footer -->
@@ -272,7 +349,7 @@ export class LandingConfigComponent implements OnInit, OnDestroy {
   MapPin = MapPin; Clock = Clock; Star = Star; Instagram = Instagram;
   Facebook = Facebook; Smartphone = Smartphone; Trash2 = Trash2;
   Plus = Plus; Save = Save; ChevronLeft = ChevronLeft; ChevronRight = ChevronRight;
-  ExternalLink = ExternalLink; Info = Info; Camera = Camera;
+  ExternalLink = ExternalLink; Info = Info; Camera = Camera; Copy = Copy; CreditCard = CreditCard;
 
   activeTab: Tab = 'info';
   isSaving = false;
@@ -284,8 +361,10 @@ export class LandingConfigComponent implements OnInit, OnDestroy {
 
   tabs = [
     { id: 'info' as Tab, label: 'Info', icon: Info },
+    { id: 'hours' as Tab, label: 'Horario', icon: Clock },
+    { id: 'pago' as Tab, label: 'Pago Móvil', icon: CreditCard },
     { id: 'images' as Tab, label: 'Imágenes', icon: Image },
-    { id: 'social' as Tab, label: 'Social / Links', icon: Globe }
+    { id: 'social' as Tab, label: 'Social', icon: Globe }
   ];
 
   form: Partial<RestaurantConfig> = {};
@@ -314,9 +393,37 @@ export class LandingConfigComponent implements OnInit, OnDestroy {
         stats: (c.stats ?? []).map(s => ({ ...s })),
         playstore_url: c.playstore_url,
         instagram_url: c.instagram_url,
-        facebook_url: c.facebook_url
+        facebook_url: c.facebook_url,
+        business_hours: this.ensureHours(c.business_hours),
+        timezone: c.timezone || 'America/Caracas',
+        pago_movil: { ...(c.pago_movil ?? { bank: '', id_number: '', phone: '', holder: '' }) },
+        delivery_fee: c.delivery_fee ?? 0
       };
     });
+  }
+
+  /** 7 filas (Lun→Dom) fusionando lo guardado; day: 0=Dom..6=Sáb */
+  private ensureHours(existing: DayHours[] = []): DayHours[] {
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    return order.map(day => {
+      const found = existing.find(h => h.day === day);
+      return found
+        ? { ...found }
+        : { day, open: '12:00', close: '23:00', closed: false };
+    });
+  }
+
+  dayName(day: number): string {
+    return DAY_NAMES[day] ?? '';
+  }
+
+  copyHoursToAll(): void {
+    const hours = this.form.business_hours ?? [];
+    const monday = hours.find(h => h.day === 1);
+    if (!monday) return;
+    this.form.business_hours = hours.map(h => ({
+      ...h, open: monday.open, close: monday.close, closed: monday.closed
+    }));
   }
 
   ngOnDestroy() {

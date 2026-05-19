@@ -5,12 +5,14 @@ import { LucideAngularModule, X, Plus, Minus, ShoppingBag, LogIn } from 'lucide-
 import { AppService } from '../../services/app.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
+import { RestaurantConfigService, OpenState } from '../../services/restaurant-config.service';
+import { CustomerCheckoutComponent } from '../customer-checkout/customer-checkout.component';
 import { CartItem, Customer } from '../../models/types';
 
 @Component({
   selector: 'app-cart-summary',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule, CustomerCheckoutComponent],
   templateUrl: './cart-summary.component.html',
   styleUrls: ['./cart-summary.component.css']
 })
@@ -23,7 +25,9 @@ export class CartSummaryComponent implements OnInit {
 
   cart: CartItem[] = [];
   showCheckout = false;
+  showCustomerCheckout = false;
   isAuthenticated = false;
+  openState: OpenState = { open: true, label: '' };
   customer: Customer = {
     name: '',
     phone: '',
@@ -35,6 +39,7 @@ export class CartSummaryComponent implements OnInit {
     private appService: AppService,
     private authService: AuthService,
     private toast: ToastService,
+    private configService: RestaurantConfigService,
   ) {}
 
   ngOnInit() {
@@ -45,12 +50,30 @@ export class CartSummaryComponent implements OnInit {
       this.isAuthenticated = state.isAuthenticated;
       if (!state.isAuthenticated) this.showCheckout = false;
     });
+    this.configService.openState$.subscribe(s => (this.openState = s));
+  }
+
+  /** El local está cerrado y el usuario NO es staff (staff puede ordenar en sitio). */
+  get blockedByHours(): boolean {
+    return !this.openState.open && !this.authService.isStaff();
+  }
+
+  get isCustomer(): boolean {
+    return this.authService.isCustomer();
   }
 
   proceedToCheckout() {
     if (!this.isAuthenticated) {
-      this.toast.warning('Inicia sesión para continuar con tu pedido');
+      this.toast.warning('Inicia sesión o crea tu cuenta para pedir');
       this.authService.requestLogin();
+      return;
+    }
+    if (this.blockedByHours) {
+      this.toast.warning(this.openState.label || 'El local está cerrado en este momento');
+      return;
+    }
+    if (this.isCustomer) {
+      this.showCustomerCheckout = true;
       return;
     }
     this.showCheckout = true;
@@ -69,6 +92,10 @@ export class CartSummaryComponent implements OnInit {
   }
 
   submitOrder() {
+    if (this.blockedByHours) {
+      this.toast.warning(this.openState.label || 'El local está cerrado en este momento');
+      return;
+    }
     if (this.customer.name && this.customer.phone) {
       this.appService.createOrder(this.customer);
       this.showCheckout = false;

@@ -67,7 +67,8 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       combineLatest([this.appService.orders$, this.appService.archivedOrders$]).subscribe(([orders, archived]) => {
         const previousPendingCount = this.orders.filter(o => o.status === 'pending').length;
-        this.orders = orders;
+        // Excluir pedidos de cliente sin pago aprobado (no entran a cocina)
+        this.orders = orders.filter(o => o.status !== 'awaiting-payment');
         this.archivedOrders = archived.filter(o => o.status === 'completed');
         this.isLoading = false;
 

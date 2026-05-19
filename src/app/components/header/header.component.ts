@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
-import { LucideAngularModule, ChefHat, ShoppingCart, Menu, Settings, LogOut, User } from 'lucide-angular';
+import { LucideAngularModule, ChefHat, ShoppingCart, Menu, Settings, LogOut, User, Boxes, ClipboardList, Receipt } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
 import { AuthService } from '../../services/auth.service';
 import { NotificationPanelComponent } from '../notification-panel/notification-panel.component';
@@ -23,13 +23,18 @@ export class HeaderComponent implements OnInit {
   Settings = Settings;
   LogOut = LogOut;
   User = User;
+  Boxes = Boxes;
+  ClipboardList = ClipboardList;
+  Receipt = Receipt;
 
-  currentView: 'menu' | 'kitchen' | 'admin' | 'orders' = 'menu';
+  currentView: 'menu' | 'kitchen' | 'admin' | 'orders' | 'inventario' | 'cuenta' | 'misped' | 'pagos' = 'menu';
   cartItemCount = 0;
   isAuthenticated = false;
   currentUser: UserType | null = null;
   canAccessKitchen = false;
   canAccessAdmin = false;
+  canAccessInventory = false;
+  isCustomer = false;
 
   constructor(
     private appService: AppService,
@@ -57,6 +62,8 @@ export class HeaderComponent implements OnInit {
       this.currentUser = authState.user;
       this.canAccessKitchen = this.authService.canAccessKitchen();
       this.canAccessAdmin = this.authService.canAccessAdmin();
+      this.canAccessInventory = this.authService.canAccessKitchen();
+      this.isCustomer = this.authService.isCustomer();
     });
   }
 
@@ -66,11 +73,35 @@ export class HeaderComponent implements OnInit {
       this.currentView = 'kitchen';
     } else if (url.includes('/admin')) {
       this.currentView = 'admin';
+    } else if (url.includes('/inventario')) {
+      this.currentView = 'inventario';
+    } else if (url.includes('/mis-pedidos')) {
+      this.currentView = 'misped';
+    } else if (url.includes('/cuenta')) {
+      this.currentView = 'cuenta';
+    } else if (url.includes('/pagos')) {
+      this.currentView = 'pagos';
     } else if (url.includes('/orders')) {
       this.currentView = 'orders';
     } else {
       this.currentView = 'menu';
     }
+  }
+
+  goToInventory() {
+    this.router.navigate(['/inventario']);
+  }
+
+  goToCuenta() {
+    this.router.navigate(['/cuenta']);
+  }
+
+  goToMisPedidos() {
+    this.router.navigate(['/mis-pedidos']);
+  }
+
+  goToPagos() {
+    this.router.navigate(['/pagos']);
   }
 
   goToMenu() {

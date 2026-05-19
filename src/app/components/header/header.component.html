@@ -34,6 +34,13 @@
 
         <!-- Botones de navegación en menu view -->
         <div *ngIf="currentView === 'menu' && isAuthenticated" class="flex items-center space-x-1">
+          <button *ngIf="canAccessInventory"
+            (click)="goToInventory()"
+            title="Inventario"
+            class="flex items-center space-x-1.5 bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 px-2.5 py-2 sm:px-4 rounded-lg font-medium transition-colors">
+            <lucide-icon [img]="Boxes" class="h-4 w-4"></lucide-icon>
+            <span class="hidden sm:inline text-sm">Inventario</span>
+          </button>
           <button *ngIf="canAccessKitchen"
             (click)="goToKitchen()"
             title="Cocina"
@@ -42,11 +49,32 @@
             <span class="hidden sm:inline text-sm">Cocina</span>
           </button>
           <button *ngIf="canAccessAdmin"
+            (click)="goToPagos()"
+            title="Pagos por aprobar"
+            class="flex items-center space-x-1.5 bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 px-2.5 py-2 sm:px-4 rounded-lg font-medium transition-colors">
+            <lucide-icon [img]="Receipt" class="h-4 w-4"></lucide-icon>
+            <span class="hidden sm:inline text-sm">Pagos</span>
+          </button>
+          <button *ngIf="canAccessAdmin"
             (click)="goToAdmin()"
             title="Admin"
             class="flex items-center space-x-1.5 bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 px-2.5 py-2 sm:px-4 rounded-lg font-medium transition-colors">
             <lucide-icon [img]="Settings" class="h-4 w-4"></lucide-icon>
             <span class="hidden sm:inline text-sm">Admin</span>
+          </button>
+          <button *ngIf="isCustomer"
+            (click)="goToMisPedidos()"
+            title="Mis pedidos"
+            class="flex items-center space-x-1.5 bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 px-2.5 py-2 sm:px-4 rounded-lg font-medium transition-colors">
+            <lucide-icon [img]="ClipboardList" class="h-4 w-4"></lucide-icon>
+            <span class="hidden sm:inline text-sm">Mis pedidos</span>
+          </button>
+          <button *ngIf="isCustomer"
+            (click)="goToCuenta()"
+            title="Mi cuenta"
+            class="flex items-center space-x-1.5 bg-[#fac20a] text-[#2a23b8] hover:bg-[#fac20a]/90 px-2.5 py-2 sm:px-4 rounded-lg font-medium transition-colors">
+            <lucide-icon [img]="User" class="h-4 w-4"></lucide-icon>
+            <span class="hidden sm:inline text-sm">Mi cuenta</span>
           </button>
         </div>
 

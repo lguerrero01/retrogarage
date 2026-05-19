@@ -14,12 +14,15 @@ export const authGuard: CanActivateFn = async (route: ActivatedRouteSnapshot) =>
     return router.parseUrl('/menu');
   }
 
-  const requiredRole = route.data['requiredRole'] as 'admin' | 'chef' | undefined;
+  const requiredRole = route.data['requiredRole'] as 'admin' | 'chef' | 'staff' | 'customer' | undefined;
 
   if (requiredRole) {
-    const hasAccess = requiredRole === 'admin'
-      ? authService.canAccessAdmin()
-      : authService.canAccessKitchen();
+    const hasAccess =
+      requiredRole === 'admin'    ? authService.canAccessAdmin()
+      : requiredRole === 'chef'   ? authService.canAccessKitchen()
+      : requiredRole === 'staff'  ? authService.isStaff()
+      : requiredRole === 'customer' ? authService.isCustomer()
+      : true;
 
     if (!hasAccess) {
       return router.parseUrl('/menu');

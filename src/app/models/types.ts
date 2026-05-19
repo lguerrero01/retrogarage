@@ -23,15 +23,43 @@ export interface Customer {
   notes?: string;
 }
 
+export type OrderType = 'dine-in-staff' | 'dine-in-customer' | 'delivery';
+export type PaymentStatus = 'not-required' | 'pending-proof' | 'in-review' | 'approved' | 'rejected';
+
+export interface DeliveryAddress {
+  label?: string;
+  address: string;
+  reference?: string;
+  phone?: string;
+}
+
 export interface Order {
   id: string;
   waiterId?: string;
   customer: Customer;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
+  status: 'awaiting-payment' | 'pending' | 'preparing' | 'ready' | 'completed' | 'cancelled';
   timestamp: Date;
   estimatedTime?: number;
+  orderType?: OrderType;
+  customerUserId?: string | null;
+  deliveryAddress?: DeliveryAddress | null;
+  deliveryFee?: number;
+  paymentMethod?: string;
+  paymentStatus?: PaymentStatus;
+  paymentProofUrl?: string | null;
+  paymentReference?: string | null;
+}
+
+export interface CustomerAddress {
+  id: string;
+  userId: string;
+  label: string;
+  address: string;
+  reference: string;
+  phone: string;
+  isDefault: boolean;
 }
 
 export type OrderStatus = Order['status'];
@@ -71,7 +99,7 @@ export interface Invoice {
 export interface User {
   id: string;
   email: string;
-  role: 'admin' | 'chef' | 'waiter';
+  role: 'admin' | 'chef' | 'waiter' | 'customer';
   name: string;
 }
 
@@ -79,4 +107,28 @@ export interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
   idToken?: string | null;
+}
+
+export type InventoryMovementType = 'entrada' | 'salida' | 'ajuste';
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  unit: string;
+  quantity: number;
+  minQuantity: number;
+  notes: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  itemId: string;
+  type: InventoryMovementType;
+  quantity: number;
+  reason: string;
+  createdBy?: string | null;
+  createdAt: string;
 }

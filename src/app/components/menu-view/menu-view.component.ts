@@ -6,6 +6,7 @@ import { CartSummaryComponent } from '../cart-summary/cart-summary.component';
 import { SkeletonCardComponent } from '../skeleton/skeleton-card.component';
 import { PullToRefreshDirective } from '../../directives/pull-to-refresh.directive';
 import { AppService } from '../../services/app.service';
+import { RestaurantConfigService, DayHours, OpenState, DAY_NAMES } from '../../services/restaurant-config.service';
 import { MenuItem } from '../../models/types';
 
 @Component({
@@ -29,9 +30,25 @@ export class MenuViewComponent implements OnInit {
   sheetTranslate = 0;
   sheetDragging = false;
 
-  constructor(public appService: AppService) {}
+  openState: OpenState = { open: true, label: '' };
+  businessHours: DayHours[] = [];
+  showHours = false;
+
+  constructor(
+    public appService: AppService,
+    public configService: RestaurantConfigService
+  ) {}
 
   ngOnInit() {
+    this.configService.load().catch(() => {});
+    this.configService.openState$.subscribe(s => (this.openState = s));
+    this.configService.config$.subscribe(c => {
+      const order = [1, 2, 3, 4, 5, 6, 0];
+      this.businessHours = order
+        .map(day => (c.business_hours ?? []).find(h => h.day === day))
+        .filter((h): h is DayHours => !!h);
+    });
+
     this.appService.loadingMenu$.subscribe(loading => {
       this.isLoading = loading;
     });
@@ -94,5 +111,13 @@ export class MenuViewComponent implements OnInit {
       this.appService.setCartOpen(false);
     }
     this.sheetTranslate = 0;
+  }
+
+  dayName(day: number): string {
+    return DAY_NAMES[day] ?? '';
+  }
+
+  isToday(day: number): boolean {
+    return this.configService.todayDow === day;
   }
 }
