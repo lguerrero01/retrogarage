@@ -6,6 +6,15 @@ const config: CapacitorConfig = {
   webDir: 'dist/angular-restaurant-app',
   server: {
     androidScheme: 'https'
+  },
+  plugins: {
+    SplashScreen: {
+      backgroundColor: '#000000',
+      androidSplashResourceName: 'splash',
+      showSpinner: false,
+      launchAutoHide: true,
+      launchShowDuration: 1500
+    }
   }
 };
 

@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 import { MenuCardComponent } from '../menu-card/menu-card.component';
 import { CategoryFilterComponent } from '../category-filter/category-filter.component';
 import { CartSummaryComponent } from '../cart-summary/cart-summary.component';
@@ -16,7 +17,7 @@ import { MenuItem } from '../../models/types';
   templateUrl: './menu-view.component.html',
   styleUrls: ['./menu-view.component.css']
 })
-export class MenuViewComponent implements OnInit {
+export class MenuViewComponent implements OnInit, OnDestroy {
   menuItems: MenuItem[] = [];
   categories: string[] = [];
   selectedCategory = 'all';
@@ -34,6 +35,8 @@ export class MenuViewComponent implements OnInit {
   businessHours: DayHours[] = [];
   showHours = false;
 
+  private subs: Subscription[] = [];
+
   constructor(
     public appService: AppService,
     public configService: RestaurantConfigService
@@ -41,32 +44,50 @@ export class MenuViewComponent implements OnInit {
 
   ngOnInit() {
     this.configService.load().catch(() => {});
-    this.configService.openState$.subscribe(s => (this.openState = s));
-    this.configService.config$.subscribe(c => {
-      const order = [1, 2, 3, 4, 5, 6, 0];
-      this.businessHours = order
-        .map(day => (c.business_hours ?? []).find(h => h.day === day))
-        .filter((h): h is DayHours => !!h);
-    });
 
-    this.appService.loadingMenu$.subscribe(loading => {
-      this.isLoading = loading;
-    });
+    this.subs.push(
+      this.configService.openState$.subscribe(s => (this.openState = s))
+    );
 
-    this.appService.menuItems$.subscribe(items => {
-      this.menuItems = items;
-      this.categories = [...new Set(items.map(i => i.category).filter(Boolean))];
-      this.updateFilteredItems();
-      if (items.length) this.isLoading = false;
-    });
+    this.subs.push(
+      this.configService.config$.subscribe(c => {
+        const order = [1, 2, 3, 4, 5, 6, 0];
+        this.businessHours = order
+          .map(day => (c.business_hours ?? []).find(h => h.day === day))
+          .filter((h): h is DayHours => !!h);
+      })
+    );
 
-    this.appService.cart$.subscribe(cart => {
-      this.cartItemCount = cart.reduce((n, i) => n + i.quantity, 0);
-    });
+    this.subs.push(
+      this.appService.loadingMenu$.subscribe(loading => {
+        this.isLoading = loading;
+      })
+    );
 
-    this.appService.cartOpen$.subscribe(open => {
-      this.showMobileCart = open;
-    });
+    this.subs.push(
+      this.appService.menuItems$.subscribe(items => {
+        this.menuItems = items;
+        this.categories = [...new Set(items.map(i => i.category).filter(Boolean))];
+        this.updateFilteredItems();
+        if (items.length) this.isLoading = false;
+      })
+    );
+
+    this.subs.push(
+      this.appService.cart$.subscribe(cart => {
+        this.cartItemCount = cart.reduce((n, i) => n + i.quantity, 0);
+      })
+    );
+
+    this.subs.push(
+      this.appService.cartOpen$.subscribe(open => {
+        this.showMobileCart = open;
+      })
+    );
+  }
+
+  ngOnDestroy() {
+    this.subs.forEach(s => s.unsubscribe());
   }
 
   onCategoryChange(category: string) {

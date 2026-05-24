@@ -228,6 +228,8 @@ export class NotificationService {
 
   private getStatusText(status: string): string {
     switch (status) {
+      case 'awaiting-payment':
+        return 'esperando pago';
       case 'pending':
         return 'pendiente';
       case 'preparing':
@@ -236,6 +238,8 @@ export class NotificationService {
         return 'listo para entregar';
       case 'completed':
         return 'completado';
+      case 'cancelled':
+        return 'cancelado';
       default:
         return status;
     }
@@ -243,6 +247,8 @@ export class NotificationService {
 
   private getStatusEmoji(status: string): string {
     switch (status) {
+      case 'awaiting-payment':
+        return '💳';
       case 'pending':
         return '⏳';
       case 'preparing':
@@ -251,6 +257,8 @@ export class NotificationService {
         return '✅';
       case 'completed':
         return '🎉';
+      case 'cancelled':
+        return '❌';
       default:
         return '📋';
     }

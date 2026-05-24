@@ -1,6 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { REALTIME_SUBSCRIBE_STATES } from '@supabase/realtime-js';
 import { supabase } from '../config/supabase.client';
 
 @Injectable({
@@ -45,7 +46,7 @@ export class SupabaseRealtimeService implements OnDestroy {
         this.cache.set(table, updated);
         onData(updated);
       })
-      .subscribe(status => {
+      .subscribe((status: `${REALTIME_SUBSCRIBE_STATES}`) => {
         this.connected$.next(status === 'SUBSCRIBED');
       });
 

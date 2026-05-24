@@ -52,7 +52,7 @@ import { ToastService } from '../../services/toast.service';
             class="flex flex-col items-center gap-2 py-4 rounded-xl border-2 font-bold text-sm press-effect transition-all"
             [class]="orderType === 'delivery' ? 'border-[#ed450d] bg-[#ed450d]/5 text-[#ed450d]' : 'border-gray-200 text-gray-500'">
             <lucide-icon [img]="Bike" class="h-7 w-7"></lucide-icon>
-            Delivery a casa
+            A domicilio
           </button>
         </div>
 

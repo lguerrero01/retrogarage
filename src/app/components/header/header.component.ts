@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 import { LucideAngularModule, ChefHat, ShoppingCart, Menu, Settings, LogOut, User, Boxes, ClipboardList, Receipt } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
 import { AuthService } from '../../services/auth.service';
@@ -16,7 +17,7 @@ import { User as UserType } from '../../models/types';
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.css']
 })
-export class HeaderComponent implements OnInit {
+export class HeaderComponent implements OnInit, OnDestroy {
   ChefHat = ChefHat;
   ShoppingCart = ShoppingCart;
   Menu = Menu;
@@ -36,6 +37,8 @@ export class HeaderComponent implements OnInit {
   canAccessInventory = false;
   isCustomer = false;
 
+  private subs: Subscription[] = [];
+
   constructor(
     private appService: AppService,
     private authService: AuthService,
@@ -44,27 +47,37 @@ export class HeaderComponent implements OnInit {
 
   ngOnInit() {
     // Detectar cambios de ruta para actualizar currentView
-    this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd)
-    ).subscribe(() => {
-      this.updateCurrentView();
-    });
+    this.subs.push(
+      this.router.events.pipe(
+        filter(event => event instanceof NavigationEnd)
+      ).subscribe(() => {
+        this.updateCurrentView();
+      })
+    );
 
     // Actualizar la vista inicial
     this.updateCurrentView();
 
-    this.appService.cart$.subscribe(cart => {
-      this.cartItemCount = cart.reduce((count, item) => count + item.quantity, 0);
-    });
+    this.subs.push(
+      this.appService.cart$.subscribe(cart => {
+        this.cartItemCount = cart.reduce((count, item) => count + item.quantity, 0);
+      })
+    );
 
-    this.authService.authState$.subscribe(authState => {
-      this.isAuthenticated = authState.isAuthenticated;
-      this.currentUser = authState.user;
-      this.canAccessKitchen = this.authService.canAccessKitchen();
-      this.canAccessAdmin = this.authService.canAccessAdmin();
-      this.canAccessInventory = this.authService.canAccessKitchen();
-      this.isCustomer = this.authService.isCustomer();
-    });
+    this.subs.push(
+      this.authService.authState$.subscribe(authState => {
+        this.isAuthenticated = authState.isAuthenticated;
+        this.currentUser = authState.user;
+        this.canAccessKitchen = this.authService.canAccessKitchen();
+        this.canAccessAdmin = this.authService.canAccessAdmin();
+        this.canAccessInventory = this.authService.canAccessKitchen();
+        this.isCustomer = this.authService.isCustomer();
+      })
+    );
+  }
+
+  ngOnDestroy() {
+    this.subs.forEach(s => s.unsubscribe());
   }
 
   private updateCurrentView() {

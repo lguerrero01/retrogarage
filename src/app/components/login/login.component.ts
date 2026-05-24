@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { LucideAngularModule, ChefHat, Lock, Mail, Eye, EyeOff } from 'lucide-angular';
 import { AuthService } from '../../services/auth.service';
 
@@ -11,7 +12,7 @@ import { AuthService } from '../../services/auth.service';
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.css']
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
   ChefHat = ChefHat;
   Lock = Lock;
   Mail = Mail;
@@ -25,12 +26,18 @@ export class LoginComponent implements OnInit {
   showPassword = false;
   isModal = false;
 
+  private sub?: Subscription;
+
   constructor(private authService: AuthService) {}
 
   ngOnInit() {
-    this.authService.showLoginModal$.subscribe(showModal => {
+    this.sub = this.authService.showLoginModal$.subscribe(showModal => {
       this.isModal = showModal;
     });
+  }
+
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
   }
 
   async onLogin() {

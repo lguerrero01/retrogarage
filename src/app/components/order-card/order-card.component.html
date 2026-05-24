@@ -95,6 +95,14 @@
 
       <!-- Action Buttons -->
       <div class="space-y-2">
+        <!-- Comanda de cocina (visible para chef/admin/mesero en pedidos activos) -->
+        <button *ngIf="canShowComanda"
+          (click)="openComanda()"
+          class="w-full border-2 border-[#2a23b8] text-[#2a23b8] hover:bg-[#2a23b8] hover:text-white py-2 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors press-effect">
+          <lucide-icon [img]="ChefHat" class="h-4 w-4"></lucide-icon>
+          <span>Comanda de cocina</span>
+        </button>
+
         <!-- Modo cocina: avanzar cualquier estado -->
         <button *ngIf="!waiterMode && canAdvanceStatus(order.status)"
           (click)="advanceStatus()"
@@ -143,4 +151,10 @@
       </div>
     </div>
   </div>
+
+  <app-comanda-modal
+    [open]="showComanda"
+    [order]="order"
+    (close)="closeComanda()">
+  </app-comanda-modal>
 </div>

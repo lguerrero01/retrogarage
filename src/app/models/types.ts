@@ -69,6 +69,7 @@ export interface DailySummary {
   totalOrders: number;
   totalRevenue: number;
   ordersByStatus: {
+    'awaiting-payment': number;
     pending: number;
     preparing: number;
     ready: number;
@@ -84,8 +85,6 @@ export interface Invoice {
   orderId: string;
   customer: Customer;
   items: CartItem[];
-  subtotal: number;
-  tax: number;
   total: number;
   timestamp: Date;
   restaurantInfo: {

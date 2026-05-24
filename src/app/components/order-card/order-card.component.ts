@@ -1,24 +1,25 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, Clock, User, Phone, MapPin, FileText, Receipt, Settings, Ban, Trash2 } from 'lucide-angular';
+import { LucideAngularModule, Clock, User, Phone, MapPin, FileText, Receipt, Settings, Ban, Trash2, ChefHat } from 'lucide-angular';
 import { Order } from '../../models/types';
 import { AppService } from '../../services/app.service';
 import { AuthService } from '../../services/auth.service';
 import { BillingService } from '../../services/billing.service';
 import { ToastService } from '../../services/toast.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
+import { ComandaModalComponent } from '../comanda-modal/comanda-modal.component';
 
 @Component({
   selector: 'app-order-card',
   standalone: true,
-  imports: [CommonModule, LucideAngularModule],
+  imports: [CommonModule, LucideAngularModule, ComandaModalComponent],
   templateUrl: './order-card.component.html',
   styleUrls: ['./order-card.component.css']
 })
 export class OrderCardComponent {
   @Input() order!: Order;
   @Input() waiterMode = false;
-  
+
   Clock = Clock;
   User = User;
   Phone = Phone;
@@ -28,9 +29,11 @@ export class OrderCardComponent {
   Settings = Settings;
   Ban = Ban;
   Trash2 = Trash2;
+  ChefHat = ChefHat;
 
   isCancelling = false;
   isDeleting = false;
+  showComanda = false;
 
   constructor(
     private appService: AppService,
@@ -54,6 +57,8 @@ export class OrderCardComponent {
 
   getStatusColor(status: Order['status']): string {
     switch (status) {
+      case 'awaiting-payment':
+        return 'bg-amber-100 text-amber-800 border border-amber-300';
       case 'pending':
         return 'bg-[#fac20a] text-[#2a23b8]';
       case 'preparing':
@@ -71,6 +76,8 @@ export class OrderCardComponent {
 
   getStatusText(status: Order['status']): string {
     switch (status) {
+      case 'awaiting-payment':
+        return 'Esperando pago';
       case 'pending':
         return 'Pendiente';
       case 'preparing':
@@ -159,6 +166,18 @@ export class OrderCardComponent {
   generateInvoice() {
     const invoice = this.billingService.generateInvoice(this.order);
     this.billingService.printInvoice(invoice);
+  }
+
+  get canShowComanda(): boolean {
+    return this.order.status !== 'awaiting-payment' && this.order.status !== 'cancelled';
+  }
+
+  openComanda() {
+    this.showComanda = true;
+  }
+
+  closeComanda() {
+    this.showComanda = false;
   }
 
   async deleteCompleted() {

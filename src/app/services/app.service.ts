@@ -101,6 +101,11 @@ export class AppService {
       .catch(err => console.error('Error loading archived orders:', err));
   }
 
+  private persistOrders(orders: Order[]) {
+    this.ordersSubject.next(orders);
+    localStorage.setItem('restaurant-orders', JSON.stringify(orders));
+  }
+
   async deleteArchivedOrder(orderId: string): Promise<void> {
     await this.orderService.deleteArchivedOrder(orderId);
     this.archivedOrdersSubject.next(
@@ -196,18 +201,22 @@ export class AppService {
     this.updateCartStorage([]);
   }
 
-  createOrder(customer: Customer) {
+  createOrder(customer: Customer): Promise<Order | null> {
     const items = this.cartSubject.value;
-    if (!items.length) return;
+    if (!items.length) return Promise.resolve(null);
     const waiterId = this.authService.getCurrentUser()?.id ?? '';
-    this.orderService.createOrder(items, customer, waiterId)
+    return this.orderService.createOrder(items, customer, waiterId)
       .then(order => {
         this.clearCart();
         this.notificationService.notifyNewOrder(order.id, customer.name);
         // Push a todos los chefs/admins (incluso con la app cerrada)
         this.pushService.sendToChefs(order.id, customer.name);
+        return order;
       })
-      .catch(err => console.error('Error creating order:', err));
+      .catch(err => {
+        console.error('Error creating order:', err);
+        return null;
+      });
   }
 
   updateOrderStatus(orderId: string, status: Order['status']) {
@@ -225,8 +234,7 @@ export class AppService {
           .catch(console.error);
 
         // Quita el pedido de la lista activa optimísticamente
-        this.ordersSubject.next(this.ordersSubject.value.filter(o => o.id !== orderId));
-        this.notificationService.notifyOrderStatusUpdate(orderId, status);
+        this.persistOrders(this.ordersSubject.value.filter(o => o.id !== orderId));
         return;
       }
     }
@@ -235,8 +243,7 @@ export class AppService {
       .catch(err => console.error('Error updating status:', err));
 
     const updated = this.ordersSubject.value.map(o => o.id === orderId ? { ...o, status } : o);
-    this.ordersSubject.next(updated);
-    this.notificationService.notifyOrderStatusUpdate(orderId, status);
+    this.persistOrders(updated);
   }
 
   cancelOrder(orderId: string): Promise<void> {
@@ -246,7 +253,7 @@ export class AppService {
     const cancelledOrder = { ...order, status: 'cancelled' as const };
     // Actualización optimista: refleja el cambio antes del round-trip
     this.archivedOrdersSubject.next([cancelledOrder, ...this.archivedOrdersSubject.value]);
-    this.ordersSubject.next(this.ordersSubject.value.filter(o => o.id !== orderId));
+    this.persistOrders(this.ordersSubject.value.filter(o => o.id !== orderId));
 
     return this.orderService.updateStatus(orderId, 'cancelled')
       .then(() => this.orderService.archiveOrder(cancelledOrder))

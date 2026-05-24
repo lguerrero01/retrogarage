@@ -11,7 +11,10 @@
       "Bash(cmd.exe //C \"taskkill //PID 5224 //F\")",
       "Bash(tasklist:*)",
       "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(timeout 5 bash:*)"
     ],
     "deny": [],
     "ask": []

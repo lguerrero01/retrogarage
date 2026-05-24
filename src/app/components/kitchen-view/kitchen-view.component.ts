@@ -50,7 +50,8 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
     { value: 'pending', label: 'Pendientes', color: 'bg-[#fac20a]' },
     { value: 'preparing', label: 'Preparando', color: 'bg-[#ed450d]' },
     { value: 'ready', label: 'Listos', color: 'bg-[#8624ce]' },
-    { value: 'completed', label: 'Completados', color: 'bg-green-500' }
+    { value: 'completed', label: 'Completados', color: 'bg-green-500' },
+    { value: 'cancelled', label: 'Cancelados', color: 'bg-red-500' }
   ];
 
   constructor(
@@ -69,7 +70,7 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
         const previousPendingCount = this.orders.filter(o => o.status === 'pending').length;
         // Excluir pedidos de cliente sin pago aprobado (no entran a cocina)
         this.orders = orders.filter(o => o.status !== 'awaiting-payment');
-        this.archivedOrders = archived.filter(o => o.status === 'completed');
+        this.archivedOrders = archived;
         this.isLoading = false;
 
         const currentPendingCount = orders.filter(o => o.status === 'pending').length;
@@ -117,8 +118,8 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
   private updateFilteredOrders() {
     if (this.statusFilter === 'all') {
       this.filteredOrders = this.orders;
-    } else if (this.statusFilter === 'completed') {
-      this.filteredOrders = this.archivedOrders;
+    } else if (this.statusFilter === 'completed' || this.statusFilter === 'cancelled') {
+      this.filteredOrders = this.archivedOrders.filter(o => o.status === this.statusFilter);
     } else {
       this.filteredOrders = this.orders.filter(o => o.status === this.statusFilter);
     }
@@ -131,7 +132,9 @@ export class KitchenViewComponent implements OnInit, OnDestroy {
 
   getOrderCountByStatus(status: OrderStatus | 'all'): number {
     if (status === 'all') return this.orders.length;
-    if (status === 'completed') return this.archivedOrders.length;
+    if (status === 'completed' || status === 'cancelled') {
+      return this.archivedOrders.filter(o => o.status === status).length;
+    }
     return this.orders.filter(o => o.status === status).length;
   }
 

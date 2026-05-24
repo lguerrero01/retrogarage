@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, Plus, Edit, Trash2, Save, X, Eye, EyeOff, Upload, Tag, ChevronDown, Check, Globe } from 'lucide-angular';
+import { LucideAngularModule, Plus, Edit, Trash2, Save, X, Eye, EyeOff, Upload, Tag, ChevronDown, Check, Globe, Users } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
 import { ProductSupabaseService } from '../../services/product-supabase.service';
 import { CategoryService } from '../../services/category.service';
@@ -34,6 +34,17 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
   ChevronDown = ChevronDown;
   Check = Check;
   Globe = Globe;
+  Users = Users;
+
+  customerCount: number | null = null;
+  isLoadingCustomers = true;
+
+  // Modal de clientes
+  showCustomersModal = false;
+  customers: { id: string; name: string; email: string; phone: string; created_at: string }[] = [];
+  isLoadingCustomersList = false;
+  customersError = '';
+  isDeletingCustomer: string | null = null;
 
   showCategoryDropdown = false;
   showLandingConfig = false;
@@ -87,6 +98,70 @@ export class AdminPanelComponent implements OnInit, OnDestroy {
       const productCats = [...new Set(this.menuItems.map(i => i.category).filter(Boolean))];
       this.allCategories = [...new Set([...cats, ...productCats])].sort();
     }));
+
+    this.loadCustomerCount();
+  }
+
+  private async loadCustomerCount() {
+    this.isLoadingCustomers = true;
+    const { count, error } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('role', 'customer');
+    if (error) {
+      console.error('Error fetching customer count:', error);
+      this.customerCount = null;
+    } else {
+      this.customerCount = count ?? 0;
+    }
+    this.isLoadingCustomers = false;
+  }
+
+  async openCustomersModal() {
+    this.showCustomersModal = true;
+    await this.loadCustomersList();
+  }
+
+  closeCustomersModal() {
+    this.showCustomersModal = false;
+    this.customersError = '';
+  }
+
+  private async loadCustomersList() {
+    this.isLoadingCustomersList = true;
+    this.customersError = '';
+    const { data, error } = await supabase.rpc('admin_list_customers');
+    if (error) {
+      this.customersError = error.message ?? 'Error al cargar clientes';
+      this.customers = [];
+    } else {
+      this.customers = data ?? [];
+    }
+    this.isLoadingCustomersList = false;
+  }
+
+  async deleteCustomer(c: { id: string; name: string; email: string }) {
+    const ok = await this.confirmDialog.confirm({
+      title: 'Eliminar cliente',
+      message: `¿Eliminar a ${c.name || c.email}? Esta acción borra la cuenta y todos sus datos. No se puede deshacer.`,
+      confirmText: 'Sí, eliminar',
+      cancelText: 'Cancelar',
+      danger: true
+    });
+    if (!ok) return;
+
+    this.isDeletingCustomer = c.id;
+    const { error } = await supabase.rpc('admin_delete_customer', { p_user_id: c.id });
+    this.isDeletingCustomer = null;
+
+    if (error) {
+      this.toast.error(error.message ?? 'Error al eliminar el cliente');
+      return;
+    }
+
+    this.customers = this.customers.filter(x => x.id !== c.id);
+    if (this.customerCount !== null) this.customerCount = Math.max(0, this.customerCount - 1);
+    this.toast.success(`${c.name || c.email} eliminado`);
   }
 
   onPullRefresh(done: () => void) { setTimeout(done, 1200); }

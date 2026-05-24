@@ -9,7 +9,6 @@ export class BillingService {
   private invoicesSubject = new BehaviorSubject<Invoice[]>(this.getStoredInvoices());
   invoices$ = this.invoicesSubject.asObservable();
 
-  private readonly TAX_RATE = 0.16; // 16% IVA
   private readonly RESTAURANT_INFO = {
     name: 'Retro Garage',
     address: 'Av. Principal #123, Ciudad, Estado',
@@ -36,16 +35,11 @@ export class BillingService {
   }
 
   generateInvoice(order: Order): Invoice {
-    const subtotal = order.total / (1 + this.TAX_RATE);
-    const tax = order.total - subtotal;
-
     const invoice: Invoice = {
       id: `INV-${Date.now()}`,
       orderId: order.id,
       customer: order.customer,
       items: order.items,
-      subtotal: subtotal,
-      tax: tax,
       total: order.total,
       timestamp: new Date(),
       restaurantInfo: this.RESTAURANT_INFO
@@ -64,6 +58,7 @@ export class BillingService {
     );
 
     const ordersByStatus = {
+      'awaiting-payment': dayOrders.filter(o => o.status === 'awaiting-payment').length,
       pending: dayOrders.filter(o => o.status === 'pending').length,
       preparing: dayOrders.filter(o => o.status === 'preparing').length,
       ready: dayOrders.filter(o => o.status === 'ready').length,
@@ -190,8 +185,6 @@ export class BillingService {
         </table>
 
         <div class="totals">
-          <div>Subtotal: $${invoice.subtotal.toFixed(2)}</div>
-          <div>IVA (16%): $${invoice.tax.toFixed(2)}</div>
           <div class="total-row">Total: $${invoice.total.toFixed(2)}</div>
         </div>
 

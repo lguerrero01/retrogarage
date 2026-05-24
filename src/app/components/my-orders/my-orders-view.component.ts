@@ -35,7 +35,7 @@ import { ToastService } from '../../services/toast.service';
               <p class="text-xs text-gray-400 font-semibold">#{{ o.id.slice(0, 8) }} · {{ o.timestamp | date:'dd/MM HH:mm' }}</p>
               <p class="font-bold text-gray-900 flex items-center gap-1.5 mt-0.5">
                 <lucide-icon [img]="o.orderType === 'delivery' ? Bike : Store" class="h-4 w-4 text-gray-400"></lucide-icon>
-                {{ o.orderType === 'delivery' ? 'Delivery' : 'En el local' }}
+                {{ o.orderType === 'delivery' ? 'A domicilio' : 'En el local' }}
               </p>
             </div>
             <span class="text-[11px] font-bold px-2.5 py-1 rounded-full" [class]="badge(o)">{{ statusLabel(o) }}</span>

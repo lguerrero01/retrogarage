@@ -107,7 +107,8 @@ export class AuthService {
     if (!user || !this.isAuthenticated()) return false;
     if (role === 'admin') return user.role === 'admin';
     if (role === 'chef') return user.role === 'admin' || user.role === 'chef';
-    return true;
+    if (role === 'waiter') return user.role === 'admin' || user.role === 'waiter';
+    return false;
   }
 
   /** Personal del local (admin/chef/waiter). Los clientes públicos NO son staff. */

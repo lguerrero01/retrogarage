@@ -35,7 +35,7 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
             <p class="text-xs text-gray-400">{{ o.customer.phone }} · #{{ o.id.slice(0, 8) }}</p>
             <p class="text-sm text-gray-500 flex items-center gap-1.5 mt-1">
               <lucide-icon [img]="o.orderType === 'delivery' ? Bike : Store" class="h-4 w-4"></lucide-icon>
-              {{ o.orderType === 'delivery' ? 'Delivery' : 'En el local' }}
+              {{ o.orderType === 'delivery' ? 'A domicilio' : 'En el local' }}
               <span *ngIf="o.orderType === 'delivery' && o.deliveryAddress" class="text-gray-400 truncate">
                 — {{ o.deliveryAddress.address }}
               </span>

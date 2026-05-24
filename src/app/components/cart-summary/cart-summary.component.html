@@ -157,3 +157,9 @@
   [cart]="cart"
   (close)="showCustomerCheckout = false">
 </app-customer-checkout>
+
+<app-comanda-modal
+  [open]="showComanda"
+  [order]="lastOrder"
+  (close)="closeComanda()">
+</app-comanda-modal>

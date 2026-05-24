@@ -1,22 +1,24 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { LucideAngularModule, X, Plus, Minus, ShoppingBag, LogIn } from 'lucide-angular';
 import { AppService } from '../../services/app.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { RestaurantConfigService, OpenState } from '../../services/restaurant-config.service';
 import { CustomerCheckoutComponent } from '../customer-checkout/customer-checkout.component';
-import { CartItem, Customer } from '../../models/types';
+import { ComandaModalComponent } from '../comanda-modal/comanda-modal.component';
+import { CartItem, Customer, Order } from '../../models/types';
 
 @Component({
   selector: 'app-cart-summary',
   standalone: true,
-  imports: [CommonModule, FormsModule, LucideAngularModule, CustomerCheckoutComponent],
+  imports: [CommonModule, FormsModule, LucideAngularModule, CustomerCheckoutComponent, ComandaModalComponent],
   templateUrl: './cart-summary.component.html',
   styleUrls: ['./cart-summary.component.css']
 })
-export class CartSummaryComponent implements OnInit {
+export class CartSummaryComponent implements OnInit, OnDestroy {
   X = X;
   Plus = Plus;
   Minus = Minus;
@@ -26,6 +28,8 @@ export class CartSummaryComponent implements OnInit {
   cart: CartItem[] = [];
   showCheckout = false;
   showCustomerCheckout = false;
+  showComanda = false;
+  lastOrder: Order | null = null;
   isAuthenticated = false;
   openState: OpenState = { open: true, label: '' };
   customer: Customer = {
@@ -35,6 +39,8 @@ export class CartSummaryComponent implements OnInit {
     notes: ''
   };
 
+  private subs: Subscription[] = [];
+
   constructor(
     private appService: AppService,
     private authService: AuthService,
@@ -43,14 +49,24 @@ export class CartSummaryComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.appService.cart$.subscribe(cart => {
-      this.cart = cart;
-    });
-    this.authService.authState$.subscribe(state => {
-      this.isAuthenticated = state.isAuthenticated;
-      if (!state.isAuthenticated) this.showCheckout = false;
-    });
-    this.configService.openState$.subscribe(s => (this.openState = s));
+    this.subs.push(
+      this.appService.cart$.subscribe(cart => {
+        this.cart = cart;
+      })
+    );
+    this.subs.push(
+      this.authService.authState$.subscribe(state => {
+        this.isAuthenticated = state.isAuthenticated;
+        if (!state.isAuthenticated) this.showCheckout = false;
+      })
+    );
+    this.subs.push(
+      this.configService.openState$.subscribe(s => (this.openState = s))
+    );
+  }
+
+  ngOnDestroy() {
+    this.subs.forEach(s => s.unsubscribe());
   }
 
   /** El local está cerrado y el usuario NO es staff (staff puede ordenar en sitio). */
@@ -91,16 +107,33 @@ export class CartSummaryComponent implements OnInit {
     return this.appService.getCartTotal();
   }
 
-  submitOrder() {
+  async submitOrder() {
     if (this.blockedByHours) {
       this.toast.warning(this.openState.label || 'El local está cerrado en este momento');
       return;
     }
-    if (this.customer.name && this.customer.phone) {
-      this.appService.createOrder(this.customer);
-      this.showCheckout = false;
-      this.customer = { name: '', phone: '', table: '', notes: '' };
-      this.toast.success('Pedido enviado a cocina');
+    if (!this.customer.name || !this.customer.phone) return;
+
+    const customerSnapshot = this.customer;
+    this.customer = { name: '', phone: '', table: '', notes: '' };
+    this.showCheckout = false;
+
+    const order = await this.appService.createOrder(customerSnapshot);
+    if (!order) {
+      this.toast.error('No se pudo enviar el pedido');
+      return;
     }
+    this.toast.success('Pedido enviado a cocina');
+
+    // Para staff (mesero/admin) abrir la comanda de inmediato
+    if (this.authService.isStaff()) {
+      this.lastOrder = order;
+      this.showComanda = true;
+    }
+  }
+
+  closeComanda() {
+    this.showComanda = false;
+    this.lastOrder = null;
   }
 }
